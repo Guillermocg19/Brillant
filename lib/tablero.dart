@@ -117,15 +117,6 @@ Horizontal _clasificarHorizontal(double columnaProm, int columnas) {
 /// Extrae los valores de las celdas del color [region] que además caigan
 /// en la posición pedida. Deja [vertical] u [horizontal] en null para no
 /// filtrar por ese eje (ej. dejar ambos en null = "todos los <color>").
-///
-/// Ejemplos:
-/// - Solo color -> "todos los azules":
-///     valoresPorColorYPosicion(celdas, colorPorZona, filas, columnas, ColorRegion.azul)
-/// - Color + una posición -> "azul de arriba":
-///     valoresPorColorYPosicion(..., ColorRegion.azul, vertical: Vertical.arriba)
-/// - Color + dos posiciones -> "amarillo arriba izquierda":
-///     valoresPorColorYPosicion(..., ColorRegion.amarillo,
-///         vertical: Vertical.arriba, horizontal: Horizontal.izquierda)
 List<int> valoresPorColorYPosicion(
   List<Celda> celdas,
   Map<int, ColorRegion> colorPorZona,
@@ -162,19 +153,6 @@ List<int> valoresPorColorYPosicion(
 
   return resultado;
 }
-
-/// El tablero exacto que dibujaste (7x7).
-final tableroBrillant = [
-  [ColorRegion.amarillo, ColorRegion.verde, ColorRegion.morado, ColorRegion.morado, ColorRegion.morado, ColorRegion.morado, ColorRegion.amarillo],
-  [ColorRegion.verde, ColorRegion.verde, ColorRegion.morado, ColorRegion.azul, ColorRegion.azul, ColorRegion.morado, ColorRegion.verde],
-  [ColorRegion.verde, ColorRegion.rojo, ColorRegion.azul, ColorRegion.azul, ColorRegion.morado, ColorRegion.verde, ColorRegion.morado],
-  [ColorRegion.verde, ColorRegion.rojo, ColorRegion.rojo, ColorRegion.amarillo, ColorRegion.verde, ColorRegion.verde, ColorRegion.azul],
-  [ColorRegion.verde, ColorRegion.morado, ColorRegion.morado, ColorRegion.azul, ColorRegion.rojo, ColorRegion.rojo, ColorRegion.azul],
-  [ColorRegion.rojo, ColorRegion.rojo, ColorRegion.morado, ColorRegion.azul, ColorRegion.rojo, ColorRegion.azul, ColorRegion.azul],
-  [ColorRegion.amarillo, ColorRegion.morado, ColorRegion.morado, ColorRegion.rojo, ColorRegion.rojo, ColorRegion.azul, ColorRegion.amarillo],
-];
-
-// ---------- Agregar a lib/tablero.dart ----------
 
 /// El tablero real "Level 1" de Brilliant (leído de la foto oficial).
 final tableroNivel1 = [
