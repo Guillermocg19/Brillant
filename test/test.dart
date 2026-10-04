@@ -1,12 +1,7 @@
 import 'dart:math';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:brillant_app/reglas.dart';
 import 'package:brillant_app/tablero.dart';
-import 'dart:math';
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:brillant_app/tablero.dart';
-import 'package:brillant_app/pantalla_valores_iniciales.dart';
-import 'package:brillant_app/juego.dart';
 
 
 import 'package:flutter_test/flutter_test.dart';
@@ -231,7 +226,7 @@ void main() {
 
   group('construirTableroDesdeColores (tablero real)', () {
     test('el tablero de 7x7 genera 49 celdas', () {
-      final resultado = construirTableroDesdeColores(tableroBrillant);
+      final resultado = construirTableroDesdeColores(tableroNivel1);
       expect(resultado.celdas.length, 49);
     });
   });

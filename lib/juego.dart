@@ -25,6 +25,7 @@ class TiroDados {
   List<int> get valores => [dado1, dado2];
 }
 
+
 TiroDados tirarDados([Random? random]) {
   final r = random ?? Random();
   return TiroDados(r.nextInt(6) + 1, r.nextInt(6) + 1);
@@ -73,11 +74,31 @@ class TableroJuego {
     );
   }
 
-  /// True si [valor] puede colocarse en (fila, columna) según la regla
-  /// de la zona. La celda debe estar vacía.
+    bool get tableroVacio => celdas.every((c) => c.valor == null);
+
+  bool _tieneVecinoConNumero(int fila, int columna) {
+    const direcciones = [
+      [-1, 0], [1, 0], [0, -1], [0, 1], // arriba, abajo, izq, der — sin diagonales
+    ];
+    for (final d in direcciones) {
+      final f = fila + d[0];
+      final c = columna + d[1];
+      if (f >= 0 && f < filas && c >= 0 && c < columnas) {
+        if (celdaEn(f, c).valor != null) return true;
+      }
+    }
+    return false;
+  }
+
+  /// True si [valor] puede colocarse en (fila, columna): la celda debe
+  /// estar vacía, debe ser adyacente (sin diagonales) a otra celda ya
+  /// ocupada — salvo que el tablero esté completamente vacío, en cuyo
+  /// caso cualquier celda sirve como primer movimiento — y debe cumplir
+  /// la regla de su zona.
   bool puedeColocar(int fila, int columna, int valor) {
     final celda = celdaEn(fila, columna);
     if (celda.valor != null) return false;
+    if (!tableroVacio && !_tieneVecinoConNumero(fila, columna)) return false;
     final regla = reglaParaColor(colorPorZona[celda.zonaId]!);
     return regla(valoresDeZona(celda.zonaId), valor);
   }
@@ -136,4 +157,5 @@ class TableroJuego {
     juego.colocarValoresIniciales(valoresIniciales);
     return juego;
   }
+  
 }

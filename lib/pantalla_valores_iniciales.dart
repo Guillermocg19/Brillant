@@ -3,13 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'tablero.dart';
 import 'valores_iniciales_bloc.dart';
-import 'valores_iniciales_event.dart';
-import 'valores_iniciales_state.dart';
+import 'colores.dart';
 
-/// Pantalla previa al juego: el jugador debe colocar los números 1-6
-/// (cada uno una sola vez) en las 6 casillas marcadas con estrella.
-/// Requiere que un ValoresInicialesBloc ya esté provisto arriba en el
-/// árbol (ver main.dart).
+/// Pantalla previa al juego: el jugador coloca los números 1-6
+/// (sin repetir) en las casillas con estrella. Toda la lógica de
+/// selección/colocación vive en ValoresInicialesBloc; esta clase
+/// solo arma la UI y despacha eventos.
 class PantallaValoresIniciales extends StatelessWidget {
   final List<List<ColorRegion>> tablero;
   final Set<Point<int>> estrellas;
@@ -22,20 +21,20 @@ class PantallaValoresIniciales extends StatelessWidget {
     required this.alContinuar,
   });
 
-  Color _colorDe(ColorRegion c) {
-    switch (c) {
-      case ColorRegion.amarillo:
-        return const Color(0xFFFDD835);
-      case ColorRegion.verde:
-        return const Color(0xFF66BB6A);
-      case ColorRegion.morado:
-        return const Color(0xFFBA68C8);
-      case ColorRegion.azul:
-        return const Color(0xFF4FC3F7);
-      case ColorRegion.rojo:
-        return const Color(0xFFE57373);
-    }
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => ValoresInicialesBloc(estrellas),
+      child: _Vista(tablero: tablero, alContinuar: alContinuar),
+    );
   }
+}
+
+class _Vista extends StatelessWidget {
+  final List<List<ColorRegion>> tablero;
+  final void Function(Map<Point<int>, int>) alContinuar;
+
+  const _Vista({required this.tablero, required this.alContinuar});
 
   @override
   Widget build(BuildContext context) {
@@ -43,132 +42,155 @@ class PantallaValoresIniciales extends StatelessWidget {
     final columnas = tablero[0].length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Coloca los valores iniciales')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: BlocBuilder<ValoresInicialesBloc, ValoresInicialesState>(
-            builder: (context, state) {
-              final listo = state.listo(estrellas.length);
-              return Column(
-                children: [
-                  const Text(
-                    'Toca un número y luego una casilla marcada con ✦ para '
-                    'colocarlo ahí. Cada número del 1 al 6 se usa una sola vez.',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildChips(context, state),
-                  const SizedBox(height: 16),
-                  // El tablero ocupa el menor entre ancho y alto
-                  // disponibles, así nunca se desborda.
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final lado =
-                            min(constraints.maxWidth, constraints.maxHeight);
-                        return Center(
-                          child: SizedBox(
-                            width: lado,
-                            height: lado,
-                            child: GridView.builder(
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: filas * columnas,
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columnas,
-                                crossAxisSpacing: 2,
-                                mainAxisSpacing: 2,
-                                childAspectRatio: 1,
-                              ),
-                              itemBuilder: (context, i) =>
-                                  _buildCelda(context, state, i, columnas),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed:
-                          listo ? () => alContinuar(state.valores) : null,
-                      child: Text(listo
-                          ? 'Inicio'
-                          : 'Coloca los ${estrellas.length - state.valores.length} valores restantes'),
-                    ),
-                  ),
-                ],
-              );
-            },
+      appBar: AppBar(
+        title: const Text('Coloca los valores iniciales'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shuffle),
+            tooltip: 'Colocar al azar',
+            onPressed: () =>
+                context.read<ValoresInicialesBloc>().add(ColocarAleatorio()),
           ),
-        ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Reiniciar',
+            onPressed: () =>
+                context.read<ValoresInicialesBloc>().add(Reiniciar()),
+          ),
+        ],
       ),
-    );
-  }
+      body: BlocBuilder<ValoresInicialesBloc, ValoresInicialesState>(
+        builder: (context, state) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                const Text(
+                  'Toca un número y luego una casilla marcada con ✦ para '
+                  'colocarlo ahí, o usa el botón de mezclar para repartirlos '
+                  'al azar.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const LeyendaColores(),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  children: state.numerosDisponibles.map((n) {
+                    final seleccionado = state.numeroSeleccionado == n;
+                    return ChoiceChip(
+                      label: Text('$n'),
+                      selected: seleccionado,
+                      onSelected: (_) => context
+                          .read<ValoresInicialesBloc>()
+                          .add(SeleccionarNumero(n)),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final lado = constraints.maxWidth < constraints.maxHeight
+                          ? constraints.maxWidth
+                          : constraints.maxHeight;
 
-  Widget _buildChips(BuildContext context, ValoresInicialesState state) {
-    final disponibles = state.numerosDisponibles;
-    if (disponibles.isEmpty) {
-      return const Text(
-        'Todos los números están colocados ✓',
-        style: TextStyle(color: Colors.grey, fontSize: 13),
-      );
-    }
-    return Wrap(
-      spacing: 8,
-      alignment: WrapAlignment.center,
-      children: disponibles.map((n) {
-        final seleccionado = state.numeroSeleccionado == n;
-        return ChoiceChip(
-          label: Text('$n'),
-          selected: seleccionado,
-          onSelected: (_) =>
-              context.read<ValoresInicialesBloc>().add(SeleccionarNumero(n)),
-        );
-      }).toList(),
-    );
-  }
+                      return Center(
+                        child: SizedBox(
+                          width: lado,
+                          height: lado,
+                          child: GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: filas * columnas,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: columnas,
+                              crossAxisSpacing: 2,
+                              mainAxisSpacing: 2,
+                            ),
+                            itemBuilder: (context, i) {
+                              final f = i ~/ columnas;
+                              final c = i % columnas;
+                              final pos = Point(f, c);
+                              final color = tablero[f][c];
+                              final esEstrella =
+                                  state.estrellas.contains(pos);
+                              final valor = state.valores[pos];
 
-  Widget _buildCelda(
-    BuildContext context,
-    ValoresInicialesState state,
-    int i,
-    int columnas,
-  ) {
-    final f = i ~/ columnas;
-    final c = i % columnas;
-    final pos = Point(f, c);
-    final color = tablero[f][c];
-    final esEstrella = estrellas.contains(pos);
-    final valor = state.valores[pos];
+                              // Jugable ahora mismo: es estrella, sigue
+                              // vacía, y hay un número en mano para poner.
+                              final esJugable = esEstrella &&
+                                  valor == null &&
+                                  state.numeroSeleccionado != null;
 
-    return GestureDetector(
-      key: ValueKey('celda_${f}_$c'),
-      onTap: esEstrella
-          ? () => context.read<ValoresInicialesBloc>().add(TocarEstrella(pos))
-          : null,
-      child: Container(
-        decoration: BoxDecoration(
-          color: _colorDe(color),
-          border: Border.all(color: Colors.black.withOpacity(0.35), width: 1),
-        ),
-        child: Center(
-          child: valor != null
-              ? Text(
-                  '$valor',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.black87,
+                              final Color colorBorde;
+                              final double grosorBorde;
+                              if (esJugable) {
+                                colorBorde = Colors.blue;
+                                grosorBorde = 3;
+                              } else if (esEstrella) {
+                                colorBorde = Colors.black;
+                                grosorBorde = 2.5;
+                              } else {
+                                colorBorde = Colors.black26;
+                                grosorBorde = 1;
+                              }
+
+                              return GestureDetector(
+                                key: ValueKey('celda_${f}_$c'),
+                                onTap: !esEstrella
+                                    ? null
+                                    : () => context
+                                        .read<ValoresInicialesBloc>()
+                                        .add(TocarCelda(pos)),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: colorDeRegion(color),
+                                    border: Border.all(
+                                      color: colorBorde,
+                                      width: grosorBorde,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: valor != null
+                                        ? Text(
+                                            '$valor',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                            ),
+                                          )
+                                        : (esEstrella
+                                            ? const Text('✦',
+                                                style:
+                                                    TextStyle(fontSize: 18))
+                                            : null),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                )
-              : (esEstrella
-                  ? const Text('✦', style: TextStyle(fontSize: 18))
-                  : null),
-        ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: state.listo
+                        ? () => alContinuar(state.valores)
+                        : null,
+                    child: Text(state.listo
+                        ? 'Inicio'
+                        : 'Coloca los ${state.estrellas.length - state.valores.length} valores restantes'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
