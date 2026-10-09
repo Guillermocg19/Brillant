@@ -25,7 +25,6 @@ class TiroDados {
   List<int> get valores => [dado1, dado2];
 }
 
-
 TiroDados tirarDados([Random? random]) {
   final r = random ?? Random();
   return TiroDados(r.nextInt(6) + 1, r.nextInt(6) + 1);
@@ -38,6 +37,12 @@ class TableroJuego {
   final Map<int, ColorRegion> colorPorZona;
   final int filas;
   final int columnas;
+
+  /// Zonas que ya dieron sus puntos (para no sumarlos dos veces).
+  final Set<int> _zonasPuntuadas = {};
+
+  /// Puntuación acumulada de la partida.
+  int puntuacionTotal = 0;
 
   TableroJuego._(this._celdas, this.colorPorZona, this.filas, this.columnas);
 
@@ -74,7 +79,7 @@ class TableroJuego {
     );
   }
 
-    bool get tableroVacio => celdas.every((c) => c.valor == null);
+  bool get tableroVacio => celdas.every((c) => c.valor == null);
 
   bool _tieneVecinoConNumero(int fila, int columna) {
     const direcciones = [
@@ -119,7 +124,32 @@ class TableroJuego {
       .toList();
 
   bool get tableroCompleto => celdas.every((c) => c.valor != null);
-  // ---------- Agregar dentro de la clase TableroJuego (juego.dart) ----------
+
+  // ---------- Puntuación ----------
+
+  int _tamanoDeZona(int zonaId) =>
+      celdas.where((c) => c.zonaId == zonaId).length;
+
+  /// Revisa todas las zonas y suma puntos la primera vez que cada una
+  /// queda completamente llena. Una zona vale tantos puntos como
+  /// celdas tiene (mientras más grande, más cuesta llenarla y más vale).
+  /// Devuelve los puntos ganados en ESTA revisión (0 si no se completó
+  /// ninguna zona nueva).
+  int comprobarPuntuacion() {
+    int ganados = 0;
+    for (final zonaId in colorPorZona.keys) {
+      if (_zonasPuntuadas.contains(zonaId)) continue;
+      final tamano = _tamanoDeZona(zonaId);
+      if (valoresDeZona(zonaId).length == tamano) {
+        ganados += tamano;
+        _zonasPuntuadas.add(zonaId);
+      }
+    }
+    puntuacionTotal += ganados;
+    return ganados;
+  }
+
+  // ---------- Valores iniciales ----------
 
   /// Coloca los valores iniciales (las casillas con estrella) al
   /// arrancar la partida. A diferencia de colocar() durante el juego,
@@ -143,9 +173,10 @@ class TableroJuego {
         valor: valor,
       );
     });
-  }
 
-// ---------- Agregar como factory adicional de TableroJuego ----------
+    // Si justo esos valores completaron alguna zona, ya cuenta.
+    comprobarPuntuacion();
+  }
 
   /// Crea el tablero y de una vez coloca los valores iniciales.
   /// Es el punto de entrada que usa PantallaValoresIniciales.alContinuar.
@@ -157,5 +188,4 @@ class TableroJuego {
     juego.colocarValoresIniciales(valoresIniciales);
     return juego;
   }
-  
 }

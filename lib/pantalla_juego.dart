@@ -4,9 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'juego.dart';
 import 'juego_bloc.dart';
 import 'colores.dart';
+import 'celda_widget.dart';
 
-/// Pantalla del juego: tirar dados, elegir uno de los dos números y
-/// colocarlo en cualquier celda válida (adyacente + regla de la zona).
+/// Pantalla del juego: los dados se tiran solos; el jugador elige uno
+/// de los dos números y lo coloca en una celda válida, o pasa el turno
+/// si no quiere (o no puede) colocar ninguno.
 class PantallaJuego extends StatelessWidget {
   final TableroJuego tableroJuego;
 
@@ -38,27 +40,26 @@ class _VistaJuego extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Text(
-                  state.mensaje,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                _Marcador(puntos: state.puntuacion),
+                const SizedBox(height: 8),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Text(
+                    state.mensaje,
+                    key: ValueKey(state.mensaje),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const LeyendaColores(),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.casino),
-                      label: const Text('Lanzar dados'),
-                      onPressed: (state.terminado ||
-                              state.numeroSeleccionado != null)
-                          ? null
-                          : () => context.read<JuegoBloc>().add(LanzarDados()),
-                    ),
-                    const SizedBox(width: 16),
-                    if (state.dado1 != null && state.dado2 != null) ...[
+                const SizedBox(height: 14),
+                if (!state.terminado &&
+                    state.dado1 != null &&
+                    state.dado2 != null)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                       _DadoBoton(
                         valor: state.dado1!,
                         seleccionado: state.numeroSeleccionado == state.dado1,
@@ -66,7 +67,7 @@ class _VistaJuego extends StatelessWidget {
                             .read<JuegoBloc>()
                             .add(ElegirNumero(state.dado1!)),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       _DadoBoton(
                         valor: state.dado2!,
                         seleccionado: state.numeroSeleccionado == state.dado2,
@@ -74,9 +75,15 @@ class _VistaJuego extends StatelessWidget {
                             .read<JuegoBloc>()
                             .add(ElegirNumero(state.dado2!)),
                       ),
+                      const SizedBox(width: 16),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.skip_next),
+                        label: const Text('Pasar'),
+                        onPressed: () =>
+                            context.read<JuegoBloc>().add(PasarTurno()),
+                      ),
                     ],
-                  ],
-                ),
+                  ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: LayoutBuilder(
@@ -87,17 +94,29 @@ class _VistaJuego extends StatelessWidget {
                               : constraints.maxHeight;
 
                       return Center(
-                        child: SizedBox(
+                        child: Container(
                           width: lado,
                           height: lado,
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
                           child: GridView.builder(
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: filas * columnas,
                             gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: columnas,
-                              crossAxisSpacing: 2,
-                              mainAxisSpacing: 2,
+                              crossAxisSpacing: 3,
+                              mainAxisSpacing: 3,
                             ),
                             itemBuilder: (context, i) {
                               final f = i ~/ columnas;
@@ -108,35 +127,16 @@ class _VistaJuego extends StatelessWidget {
                               final esValida =
                                   celdasValidas.contains(Point(f, c));
 
-                              return GestureDetector(
+                              return CeldaTablero(
                                 key: ValueKey('celda_${f}_$c'),
+                                color: color,
+                                valor: celda.valor,
+                                resaltada: esValida,
                                 onTap: !esValida
                                     ? null
                                     : () => context
                                         .read<JuegoBloc>()
                                         .add(ColocarNumero(Point(f, c))),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: colorDeRegion(color),
-                                    border: Border.all(
-                                      color: esValida
-                                          ? Colors.blue
-                                          : Colors.black26,
-                                      width: esValida ? 3 : 1,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: celda.valor != null
-                                        ? Text(
-                                            '${celda.valor}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                ),
                               );
                             },
                           ),
@@ -147,9 +147,19 @@ class _VistaJuego extends StatelessWidget {
                 ),
                 if (state.terminado) ...[
                   const SizedBox(height: 16),
-                  const Text(
-                    '¡Partida terminada!',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '¡Partida terminada! Puntuación final: ${state.puntuacion}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ],
@@ -157,6 +167,34 @@ class _VistaJuego extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// Marcador de puntos: el número "salta" cada vez que cambia.
+class _Marcador extends StatelessWidget {
+  final int puntos;
+
+  const _Marcador({required this.puntos});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.star_rounded, color: Colors.amber, size: 28),
+        const SizedBox(width: 6),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) =>
+              ScaleTransition(scale: animation, child: child),
+          child: Text(
+            '$puntos puntos',
+            key: ValueKey(puntos),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -176,19 +214,40 @@ class _DadoBoton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
+      child: AnimatedScale(
+        scale: seleccionado ? 1.08 : 1.0,
         duration: const Duration(milliseconds: 150),
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: seleccionado ? Colors.indigo.shade200 : Colors.white,
-          border: Border.all(color: Colors.black, width: 2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Text(
-            '$valor',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            color: seleccionado ? Colors.indigo.shade400 : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: seleccionado
+                  ? Colors.indigo.shade700
+                  : Colors.grey.shade300,
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              '$valor',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: seleccionado ? Colors.white : Colors.black87,
+              ),
+            ),
           ),
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'tablero.dart';
 import 'valores_iniciales_bloc.dart';
 import 'colores.dart';
+import 'celda_widget.dart';
 
 /// Pantalla previa al juego: el jugador coloca los números 1-6
 /// (sin repetir) en las casillas con estrella. Toda la lógica de
@@ -42,8 +43,11 @@ class _Vista extends StatelessWidget {
     final columnas = tablero[0].length;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F5F9),
       appBar: AppBar(
         title: const Text('Coloca los valores iniciales'),
+        centerTitle: true,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.shuffle),
@@ -65,15 +69,16 @@ class _Vista extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                const Text(
+                Text(
                   'Toca un número y luego una casilla marcada con ✦ para '
                   'colocarlo ahí, o usa el botón de mezclar para repartirlos '
                   'al azar.',
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 const LeyendaColores(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Wrap(
                   spacing: 8,
                   children: state.numerosDisponibles.map((n) {
@@ -81,6 +86,11 @@ class _Vista extends StatelessWidget {
                     return ChoiceChip(
                       label: Text('$n'),
                       selected: seleccionado,
+                      selectedColor: Colors.indigo.shade400,
+                      labelStyle: TextStyle(
+                        color: seleccionado ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.bold,
+                      ),
                       onSelected: (_) => context
                           .read<ValoresInicialesBloc>()
                           .add(SeleccionarNumero(n)),
@@ -96,17 +106,29 @@ class _Vista extends StatelessWidget {
                           : constraints.maxHeight;
 
                       return Center(
-                        child: SizedBox(
+                        child: Container(
                           width: lado,
                           height: lado,
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
                           child: GridView.builder(
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: filas * columnas,
                             gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: columnas,
-                              crossAxisSpacing: 2,
-                              mainAxisSpacing: 2,
+                              crossAxisSpacing: 3,
+                              mainAxisSpacing: 3,
                             ),
                             itemBuilder: (context, i) {
                               final f = i ~/ columnas;
@@ -117,56 +139,21 @@ class _Vista extends StatelessWidget {
                                   state.estrellas.contains(pos);
                               final valor = state.valores[pos];
 
-                              // Jugable ahora mismo: es estrella, sigue
-                              // vacía, y hay un número en mano para poner.
                               final esJugable = esEstrella &&
                                   valor == null &&
                                   state.numeroSeleccionado != null;
 
-                              final Color colorBorde;
-                              final double grosorBorde;
-                              if (esJugable) {
-                                colorBorde = Colors.blue;
-                                grosorBorde = 3;
-                              } else if (esEstrella) {
-                                colorBorde = Colors.black;
-                                grosorBorde = 2.5;
-                              } else {
-                                colorBorde = Colors.black26;
-                                grosorBorde = 1;
-                              }
-
-                              return GestureDetector(
+                              return CeldaTablero(
                                 key: ValueKey('celda_${f}_$c'),
+                                color: color,
+                                valor: valor,
+                                mostrarEstrella: esEstrella,
+                                resaltada: esJugable,
                                 onTap: !esEstrella
                                     ? null
                                     : () => context
                                         .read<ValoresInicialesBloc>()
                                         .add(TocarCelda(pos)),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: colorDeRegion(color),
-                                    border: Border.all(
-                                      color: colorBorde,
-                                      width: grosorBorde,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: valor != null
-                                        ? Text(
-                                            '$valor',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18,
-                                            ),
-                                          )
-                                        : (esEstrella
-                                            ? const Text('✦',
-                                                style:
-                                                    TextStyle(fontSize: 18))
-                                            : null),
-                                  ),
-                                ),
                               );
                             },
                           ),
@@ -178,7 +165,13 @@ class _Vista extends StatelessWidget {
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
+                  height: 48,
                   child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     onPressed: state.listo
                         ? () => alContinuar(state.valores)
                         : null,

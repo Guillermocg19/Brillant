@@ -6,10 +6,6 @@ import 'juego.dart';
 
 abstract class JuegoEvent {}
 
-/// Tira los dos dados del turno (solo si no hay un número pendiente
-/// de colocar).
-class LanzarDados extends JuegoEvent {}
-
 /// El jugador eligió uno de los dos números tirados.
 class ElegirNumero extends JuegoEvent {
   final int numero;
@@ -22,6 +18,10 @@ class ColocarNumero extends JuegoEvent {
   ColocarNumero(this.posicion);
 }
 
+/// El jugador decide NO colocar ninguno de los dos números de esta
+/// tirada: se descartan y se tiran dados nuevos de inmediato.
+class PasarTurno extends JuegoEvent {}
+
 // ---------- Estado ----------
 
 class JuegoState {
@@ -31,6 +31,8 @@ class JuegoState {
   final int? numeroSeleccionado;
   final String mensaje;
   final bool terminado;
+  final int puntuacion;
+  final int puntosUltimaJugada;
 
   const JuegoState({
     required this.tablero,
@@ -39,6 +41,8 @@ class JuegoState {
     required this.numeroSeleccionado,
     required this.mensaje,
     required this.terminado,
+    required this.puntuacion,
+    required this.puntosUltimaJugada,
   });
 
   /// Casillas donde el número elegido se puede colocar ahora mismo
@@ -57,6 +61,8 @@ class JuegoState {
     int? numeroSeleccionado,
     String? mensaje,
     bool? terminado,
+    int? puntuacion,
+    int? puntosUltimaJugada,
     bool limpiarDados = false,
     bool limpiarSeleccion = false,
   }) {
@@ -64,10 +70,13 @@ class JuegoState {
       tablero: tablero,
       dado1: limpiarDados ? null : (dado1 ?? this.dado1),
       dado2: limpiarDados ? null : (dado2 ?? this.dado2),
-      numeroSeleccionado:
-          limpiarSeleccion ? null : (numeroSeleccionado ?? this.numeroSeleccionado),
+      numeroSeleccionado: limpiarSeleccion
+          ? null
+          : (numeroSeleccionado ?? this.numeroSeleccionado),
       mensaje: mensaje ?? this.mensaje,
       terminado: terminado ?? this.terminado,
+      puntuacion: puntuacion ?? this.puntuacion,
+      puntosUltimaJugada: puntosUltimaJugada ?? 0,
     );
   }
 }
@@ -78,34 +87,15 @@ class JuegoBloc extends Bloc<JuegoEvent, JuegoState> {
   final Random _random;
 
   JuegoBloc(TableroJuego tablero, {Random? random})
-      : _random = random ?? Random(),
-        super(JuegoState(
-          tablero: tablero,
-          dado1: null,
-          dado2: null,
-          numeroSeleccionado: null,
-          mensaje: 'Lanza los dados para empezar tu turno.',
-          terminado: tablero.tableroCompleto,
-        )) {
-    on<LanzarDados>((event, emit) {
-      if (state.terminado) return;
-      if (state.numeroSeleccionado != null) {
-        emit(state.copyWith(
-          mensaje: 'Coloca el número elegido antes de volver a tirar.',
-        ));
-        return;
-      }
-      final d1 = _random.nextInt(6) + 1;
-      final d2 = _random.nextInt(6) + 1;
-      emit(state.copyWith(
-        dado1: d1,
-        dado2: d2,
-        limpiarSeleccion: true,
-        mensaje: 'Elige uno de los dos números.',
-      ));
-    });
+      : this._(tablero, random ?? Random());
 
+  // El estado inicial ya trae los dados tirados: así la pantalla abre
+  // con los dados listos, sin botón de "lanzar" y sin parpadeo.
+  JuegoBloc._(TableroJuego tablero, Random random)
+      : _random = random,
+        super(_estadoInicial(tablero, random)) {
     on<ElegirNumero>((event, emit) {
+      if (state.terminado) return;
       if (state.dado1 == null || state.dado2 == null) return;
       if (event.numero != state.dado1 && event.numero != state.dado2) return;
       emit(state.copyWith(
@@ -115,6 +105,7 @@ class JuegoBloc extends Bloc<JuegoEvent, JuegoState> {
     });
 
     on<ColocarNumero>((event, emit) {
+      if (state.terminado) return;
       if (state.numeroSeleccionado == null) return;
 
       final exito = state.tablero.colocar(
@@ -130,15 +121,60 @@ class JuegoBloc extends Bloc<JuegoEvent, JuegoState> {
         return;
       }
 
-      final completo = state.tablero.tableroCompleto;
+      final puntosGanados = state.tablero.comprobarPuntuacion();
+      final total = state.tablero.puntuacionTotal;
+
+      if (state.tablero.tableroCompleto) {
+        emit(state.copyWith(
+          limpiarDados: true,
+          limpiarSeleccion: true,
+          terminado: true,
+          puntuacion: total,
+          puntosUltimaJugada: puntosGanados,
+          mensaje: '¡Tablero completo! Partida terminada.',
+        ));
+        return;
+      }
+
+      // Colocó con éxito -> los dados siguientes se tiran solos.
       emit(state.copyWith(
-        limpiarDados: true,
+        dado1: _tirar(),
+        dado2: _tirar(),
         limpiarSeleccion: true,
-        terminado: completo,
-        mensaje: completo
-            ? '¡Tablero completo! Partida terminada.'
-            : 'Número colocado. Lanza los dados de nuevo.',
+        puntuacion: total,
+        puntosUltimaJugada: puntosGanados,
+        mensaje: puntosGanados > 0
+            ? '¡Zona completada! +$puntosGanados puntos. Elige un número.'
+            : 'Elige uno de los dos números.',
       ));
     });
+
+    on<PasarTurno>((event, emit) {
+      if (state.terminado) return;
+      emit(state.copyWith(
+        dado1: _tirar(),
+        dado2: _tirar(),
+        limpiarSeleccion: true,
+        mensaje: 'Pasaste el turno. Elige uno de los dos números.',
+      ));
+    });
+  }
+
+  int _tirar() => _random.nextInt(6) + 1;
+
+  static JuegoState _estadoInicial(TableroJuego tablero, Random random) {
+    final terminado = tablero.tableroCompleto;
+    return JuegoState(
+      tablero: tablero,
+      dado1: terminado ? null : random.nextInt(6) + 1,
+      dado2: terminado ? null : random.nextInt(6) + 1,
+      numeroSeleccionado: null,
+      mensaje: terminado
+          ? '¡Tablero completo! Partida terminada.'
+          : 'Elige uno de los dos números.',
+      terminado: terminado,
+      puntuacion: tablero.puntuacionTotal,
+      puntosUltimaJugada: 0,
+    );
   }
 }
