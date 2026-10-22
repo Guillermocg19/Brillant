@@ -125,6 +125,74 @@ class TableroJuego {
 
   bool get tableroCompleto => celdas.every((c) => c.valor != null);
 
+  // ---------- Regla del ancla ----------
+  //
+  // Se tiran dos dados. El jugador elige uno como ANCLA y el otro es el
+  // número que se coloca: solo puede ir en una casilla vacía que toque
+  // (sin diagonales) una casilla que ya tenga el valor del ancla, y que
+  // además cumpla la regla de su zona.
+
+  bool _tieneVecinoConValor(int fila, int columna, int valor) {
+    const direcciones = [
+      [-1, 0], [1, 0], [0, -1], [0, 1],
+    ];
+    for (final d in direcciones) {
+      final f = fila + d[0];
+      final c = columna + d[1];
+      if (f >= 0 && f < filas && c >= 0 && c < columnas) {
+        if (celdaEn(f, c).valor == valor) return true;
+      }
+    }
+    return false;
+  }
+
+  /// True si [valor] se puede colocar en (fila, columna) usando [ancla].
+  /// Si el tablero está totalmente vacío (sin valores iniciales) no hay
+  /// ancla que buscar y cualquier celda sirve como primer movimiento.
+  bool puedeColocarConAncla(int fila, int columna, int valor, int ancla) {
+    final celda = celdaEn(fila, columna);
+    if (celda.valor != null) return false;
+    if (!tableroVacio && !_tieneVecinoConValor(fila, columna, ancla)) {
+      return false;
+    }
+    final regla = reglaParaColor(colorPorZona[celda.zonaId]!);
+    return regla(valoresDeZona(celda.zonaId), valor);
+  }
+
+  /// Coloca [valor] si cumple la regla del ancla. Devuelve true si pudo.
+  bool colocarConAncla(int fila, int columna, int valor, int ancla) {
+    if (!puedeColocarConAncla(fila, columna, valor, ancla)) return false;
+    final celda = celdaEn(fila, columna);
+    _celdas[fila][columna] =
+        Celda(fila: fila, columna: columna, zonaId: celda.zonaId, valor: valor);
+    return true;
+  }
+
+  /// Casillas donde [valor] se puede colocar usando [ancla].
+  List<Celda> celdasValidasConAncla(int ancla, int valor) => celdas
+      .where((c) =>
+          c.valor == null &&
+          puedeColocarConAncla(c.fila, c.columna, valor, ancla))
+      .toList();
+
+  /// True si con esta tirada hay al menos una jugada: usando [dado1] de
+  /// ancla y colocando [dado2], o al revés.
+  bool hayJugadaPosible(int dado1, int dado2) =>
+      celdasValidasConAncla(dado1, dado2).isNotEmpty ||
+      celdasValidasConAncla(dado2, dado1).isNotEmpty;
+
+  /// True si existe CUALQUIER tirada (de las 36 posibles) con jugada.
+  /// Si es false y el tablero no está completo, la partida ya no se
+  /// puede continuar.
+  bool get hayAlgunaJugadaPosible {
+    for (var ancla = 1; ancla <= 6; ancla++) {
+      for (var valor = 1; valor <= 6; valor++) {
+        if (celdasValidasConAncla(ancla, valor).isNotEmpty) return true;
+      }
+    }
+    return false;
+  }
+
   // ---------- Puntuación ----------
 
   int _tamanoDeZona(int zonaId) =>

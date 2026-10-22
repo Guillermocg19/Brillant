@@ -15,10 +15,7 @@ void main() {
     const Point(1, 1),
   };
 
-  // La ventana de prueba por defecto (800x600) es muy chica para que
-  // el GridView quepa sin scroll -> las celdas fuera de la vista nunca
-  // se "construyen" y los finders no las encuentran. Por eso agrandamos
-  // la superficie ANTES de pintar el widget en cada prueba.
+ 
   Future<void> pintarPantalla(
     WidgetTester tester, {
     required void Function(Map<Point<int>, int>) alContinuar,

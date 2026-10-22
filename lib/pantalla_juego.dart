@@ -7,17 +7,21 @@ import 'colores.dart';
 import 'celda_widget.dart';
 
 /// Pantalla del juego: los dados se tiran solos; el jugador elige uno
-/// de los dos números y lo coloca en una celda válida, o pasa el turno
-/// si no quiere (o no puede) colocar ninguno.
+/// como ANCLA y coloca el otro junto a un número igual al ancla. Si con
+/// la tirada no hay jugada posible, los dados se vuelven a tirar solos.
+/// También puede pasar el turno si no quiere colocar ninguno.
 class PantallaJuego extends StatelessWidget {
   final TableroJuego tableroJuego;
 
-  const PantallaJuego({super.key, required this.tableroJuego});
+  /// Solo para pruebas: permite controlar los dados.
+  final Random? random;
+
+  const PantallaJuego({super.key, required this.tableroJuego, this.random});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => JuegoBloc(tableroJuego),
+      create: (_) => JuegoBloc(tableroJuego, random: random),
       child: const _VistaJuego(),
     );
   }
@@ -25,6 +29,17 @@ class PantallaJuego extends StatelessWidget {
 
 class _VistaJuego extends StatelessWidget {
   const _VistaJuego();
+
+  /// 'ancla' en el dado elegido, 'a colocar' en el otro, null si aún no
+  /// elige. Con dados iguales el primero hace de ancla.
+  static String? _etiqueta(JuegoState s, int indice) {
+    final sel = s.numeroSeleccionado;
+    if (sel == null) return null;
+    final esAncla = indice == 1
+        ? sel == s.dado1
+        : (sel == s.dado2 && s.dado1 != s.dado2);
+    return esAncla ? 'ancla' : 'a colocar';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,22 +76,27 @@ class _VistaJuego extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _DadoBoton(
+                        key: const ValueKey('dado_1'),
                         valor: state.dado1!,
-                        seleccionado: state.numeroSeleccionado == state.dado1,
+                        etiqueta: _etiqueta(state, 1),
+                        seleccionado: _etiqueta(state, 1) == 'ancla',
                         onTap: () => context
                             .read<JuegoBloc>()
                             .add(ElegirNumero(state.dado1!)),
                       ),
                       const SizedBox(width: 10),
                       _DadoBoton(
+                        key: const ValueKey('dado_2'),
                         valor: state.dado2!,
-                        seleccionado: state.numeroSeleccionado == state.dado2,
+                        etiqueta: _etiqueta(state, 2),
+                        seleccionado: _etiqueta(state, 2) == 'ancla',
                         onTap: () => context
                             .read<JuegoBloc>()
                             .add(ElegirNumero(state.dado2!)),
                       ),
                       const SizedBox(width: 16),
                       OutlinedButton.icon(
+                        key: const ValueKey('boton_pasar'),
                         icon: const Icon(Icons.skip_next),
                         label: const Text('Pasar'),
                         onPressed: () =>
@@ -202,54 +222,70 @@ class _Marcador extends StatelessWidget {
 class _DadoBoton extends StatelessWidget {
   final int valor;
   final bool seleccionado;
+  final String? etiqueta;
   final VoidCallback onTap;
 
   const _DadoBoton({
+    super.key,
     required this.valor,
     required this.seleccionado,
     required this.onTap,
+    this.etiqueta,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedScale(
-        scale: seleccionado ? 1.08 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: seleccionado ? Colors.indigo.shade400 : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: seleccionado
-                  ? Colors.indigo.shade700
-                  : Colors.grey.shade300,
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.12),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedScale(
+            scale: seleccionado ? 1.08 : 1.0,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: seleccionado ? Colors.indigo.shade400 : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: seleccionado
+                      ? Colors.indigo.shade700
+                      : Colors.grey.shade300,
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.12),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-            ],
+              child: Center(
+                child: Text(
+                  '$valor',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: seleccionado ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+            ),
           ),
-          child: Center(
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 14,
             child: Text(
-              '$valor',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: seleccionado ? Colors.white : Colors.black87,
-              ),
+              etiqueta ?? '',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
