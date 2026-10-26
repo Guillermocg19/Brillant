@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'juego.dart';
+import 'tablero.dart';
 
 // ---------- Eventos ----------
 
@@ -65,8 +67,16 @@ class ValoresInicialesBloc
     extends Bloc<ValoresInicialesEvent, ValoresInicialesState> {
   final Random _random;
 
-  ValoresInicialesBloc(Set<Point<int>> estrellas, {Random? random})
-      : _random = random ?? Random(),
+  /// Colores del tablero (opcional). Con él, el bloc respeta las reglas que
+  /// limitan los números de una zona (p. ej. naranja 4-6 o 1-3).
+  final List<List<ColorRegion>>? _tablero;
+
+  ValoresInicialesBloc(
+    Set<Point<int>> estrellas, {
+    Random? random,
+    List<List<ColorRegion>>? tablero,
+  })  : _random = random ?? Random(),
+        _tablero = tablero,
         super(ValoresInicialesState(
           valores: const {},
           numeroSeleccionado: null,
@@ -87,6 +97,7 @@ class ValoresInicialesBloc
         emit(state.copyWith(valores: nuevosValores));
       } else {
         if (state.numeroSeleccionado == null) return;
+        if (!_permitido(event.posicion, state.numeroSeleccionado!)) return;
         nuevosValores[event.posicion] = state.numeroSeleccionado!;
         emit(ValoresInicialesState(
           valores: nuevosValores,
@@ -97,8 +108,16 @@ class ValoresInicialesBloc
     });
 
     on<ColocarAleatorio>((event, emit) {
-      final numeros = [1, 2, 3, 4, 5, 6]..shuffle(_random);
       final estrellasLista = state.estrellas.toList();
+
+      // Con zonas de rango (naranja) no cualquier reparto sirve: se vuelve
+      // a mezclar hasta que todos los números caigan donde se permite.
+      List<int> numeros;
+      var intentos = 0;
+      do {
+        numeros = [1, 2, 3, 4, 5, 6]..shuffle(_random);
+        intentos++;
+      } while (intentos < 1000 && !_repartoValido(estrellasLista, numeros));
 
       final nuevosValores = <Point<int>, int>{};
       for (var i = 0; i < estrellasLista.length; i++) {
@@ -119,5 +138,19 @@ class ValoresInicialesBloc
         estrellas: state.estrellas,
       ));
     });
+  }
+
+  /// True si [numero] cumple la regla de la zona donde está [posicion].
+  bool _permitido(Point<int> posicion, int numero) {
+    final t = _tablero;
+    if (t == null) return true;
+    return reglaParaColor(t[posicion.x][posicion.y])(const <int>[], numero);
+  }
+
+  bool _repartoValido(List<Point<int>> estrellas, List<int> numeros) {
+    for (var i = 0; i < estrellas.length; i++) {
+      if (!_permitido(estrellas[i], numeros[i])) return false;
+    }
+    return true;
   }
 }

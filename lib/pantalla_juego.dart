@@ -67,7 +67,7 @@ class _VistaJuego extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const LeyendaColores(),
+                LeyendaColores(colores: state.tablero.colorPorZona.values.toSet()),
                 const SizedBox(height: 14),
                 if (!state.terminado &&
                     state.dado1 != null &&

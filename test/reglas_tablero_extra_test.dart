@@ -23,7 +23,7 @@ void main() {
   });
 
   group('construirTableroDesdeColores', () {
-    test('las celdas del mismo color conectadas comparten zona', () {
+        test('las celdas del mismo color conectadas comparten zona', () {
       final generado = construirTableroDesdeColores([
         [ColorRegion.verde, ColorRegion.verde],
         [ColorRegion.rojo, ColorRegion.verde],
@@ -31,7 +31,10 @@ void main() {
 
       expect(generado.celdas, hasLength(4));
       expect(generado.celdas[0].zonaId, generado.celdas[1].zonaId);
-      expect(generado.celdas[0].zonaId, isNot(generado.celdas[3].zonaId));
+      // (1,1) también es verde y toca a (0,1): es la misma zona.
+      expect(generado.celdas[0].zonaId, generado.celdas[3].zonaId);
+      // (1,0) es roja: otra zona.
+      expect(generado.celdas[0].zonaId, isNot(generado.celdas[2].zonaId));
     });
 
     test('dos celdas del mismo color conectadas solo en diagonal son zonas distintas', () {

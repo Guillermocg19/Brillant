@@ -6,6 +6,9 @@ enum ColorRegion {
   morado,
   azul,
   rojo,
+  gris, // "=" como el azul (niveles 2 y 3)
+  naranjaAlto, // solo números del 4 al 6 (nivel 4, fila de arriba)
+  naranjaBajo, // solo números del 1 al 3 (nivel 4, fila de abajo)
 }
 
 /// Posición vertical de una zona dentro del tablero.
@@ -41,7 +44,14 @@ class TableroGenerado {
   TableroGenerado(this.celdas, this.colorPorZona);
 }
 
-TableroGenerado construirTableroDesdeColores(List<List<ColorRegion>> grid) {
+/// [coloresAgrupados]: colores cuyas casillas forman UNA sola zona aunque
+/// estén separadas (en el tablero físico, el amarillo: hay que completar
+/// todos los amarillos para puntuar). Por defecto ninguno, y cada grupo
+/// conectado es su propia zona.
+TableroGenerado construirTableroDesdeColores(
+  List<List<ColorRegion>> grid, {
+  Set<ColorRegion> coloresAgrupados = const {},
+}) {
   final filas = grid.length;
   final columnas = grid[0].length;
   final idZona = List.generate(filas, (_) => List<int?>.filled(columnas, null));
@@ -74,6 +84,24 @@ TableroGenerado construirTableroDesdeColores(List<List<ColorRegion>> grid) {
       }
 
       colorPorZona[zonaActual] = color;
+    }
+  }
+
+  // Une en una sola zona todas las zonas de los colores agrupados.
+  for (final color in coloresAgrupados) {
+    final ids = colorPorZona.entries
+        .where((e) => e.value == color)
+        .map((e) => e.key)
+        .toList();
+    if (ids.length < 2) continue;
+    final principal = ids.first;
+    for (final id in ids.skip(1)) {
+      colorPorZona.remove(id);
+      for (int f = 0; f < filas; f++) {
+        for (int c = 0; c < columnas; c++) {
+          if (idZona[f][c] == id) idZona[f][c] = principal;
+        }
+      }
     }
   }
 

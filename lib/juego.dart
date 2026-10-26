@@ -11,9 +11,14 @@ bool Function(List<int>, int) reglaParaColor(ColorRegion color) {
     case ColorRegion.verde:
       return cumpleVerde;
     case ColorRegion.azul:
+    case ColorRegion.gris:
       return cumpleAzul;
     case ColorRegion.morado:
       return cumpleMorado;
+    case ColorRegion.naranjaAlto:
+      return cumpleNaranjaAlto;
+    case ColorRegion.naranjaBajo:
+      return cumpleNaranjaBajo;
   }
 }
 
@@ -44,10 +49,23 @@ class TableroJuego {
   /// Puntuación acumulada de la partida.
   int puntuacionTotal = 0;
 
-  TableroJuego._(this._celdas, this.colorPorZona, this.filas, this.columnas);
+ final Map<ColorRegion, List<int>>? puntosPorColor;
 
-  factory TableroJuego.desdeColores(List<List<ColorRegion>> grid) {
-    final generado = construirTableroDesdeColores(grid);
+  TableroJuego._(
+    this._celdas,
+    this.colorPorZona,
+    this.filas,
+    this.columnas,
+    this.puntosPorColor,
+  );
+
+  factory TableroJuego.desdeColores(
+    List<List<ColorRegion>> grid, {
+    Set<ColorRegion> coloresAgrupados = const {},
+    Map<ColorRegion, List<int>>? puntosPorColor,
+  }) {
+    final generado =
+        construirTableroDesdeColores(grid, coloresAgrupados: coloresAgrupados);
     final filas = grid.length;
     final columnas = grid[0].length;
     final matriz =
@@ -55,9 +73,14 @@ class TableroJuego {
     for (final c in generado.celdas) {
       matriz[c.fila][c.columna] = c;
     }
-    return TableroJuego._(matriz, generado.colorPorZona, filas, columnas);
+    return TableroJuego._(
+      matriz,
+      generado.colorPorZona,
+      filas,
+      columnas,
+      puntosPorColor,
+    );
   }
-
   Celda celdaEn(int fila, int columna) => _celdas[fila][columna]!;
 
   List<Celda> get celdas =>
@@ -124,6 +147,7 @@ class TableroJuego {
       .toList();
 
   bool get tableroCompleto => celdas.every((c) => c.valor != null);
+  
 
   // ---------- Regla del ancla ----------
   //
@@ -203,13 +227,25 @@ class TableroJuego {
   /// celdas tiene (mientras más grande, más cuesta llenarla y más vale).
   /// Devuelve los puntos ganados en ESTA revisión (0 si no se completó
   /// ninguna zona nueva).
-  int comprobarPuntuacion() {
+  int _puntosDeZona(int zonaId, int tamano, int puesto) {
+    final tabla = puntosPorColor?[colorPorZona[zonaId]];
+    if (tabla == null) return tamano;
+    final i = puesto - 1;
+    return (i >= 0 && i < tabla.length) ? tabla[i] : 0;
+  }
+
+  /// Revisa todas las zonas y suma puntos la primera vez que cada una
+  /// queda completamente llena. [puesto] es el lugar en que se completa
+  /// (1 por defecto: en solitario siempre eres el primero).
+  /// Devuelve los puntos ganados en ESTA revisión (0 si no se completó
+  /// ninguna zona nueva).
+  int comprobarPuntuacion({int puesto = 1}) {
     int ganados = 0;
     for (final zonaId in colorPorZona.keys) {
       if (_zonasPuntuadas.contains(zonaId)) continue;
       final tamano = _tamanoDeZona(zonaId);
       if (valoresDeZona(zonaId).length == tamano) {
-        ganados += tamano;
+        ganados += _puntosDeZona(zonaId, tamano, puesto);
         _zonasPuntuadas.add(zonaId);
       }
     }
@@ -250,9 +286,15 @@ class TableroJuego {
   /// Es el punto de entrada que usa PantallaValoresIniciales.alContinuar.
   factory TableroJuego.iniciar(
     List<List<ColorRegion>> grid,
-    Map<Point<int>, int> valoresIniciales,
-  ) {
-    final juego = TableroJuego.desdeColores(grid);
+    Map<Point<int>, int> valoresIniciales, {
+    Set<ColorRegion> coloresAgrupados = const {},
+    Map<ColorRegion, List<int>>? puntosPorColor,
+  }) {
+    final juego = TableroJuego.desdeColores(
+      grid,
+      coloresAgrupados: coloresAgrupados,
+      puntosPorColor: puntosPorColor,
+    );
     juego.colocarValoresIniciales(valoresIniciales);
     return juego;
   }

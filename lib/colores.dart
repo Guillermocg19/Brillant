@@ -15,6 +15,11 @@ Color colorDeRegion(ColorRegion c) {
       return const Color(0xFF1E88E5);
     case ColorRegion.rojo:
       return const Color(0xFFE53935);
+    case ColorRegion.gris:
+      return const Color(0xFFBDBDBD);
+    case ColorRegion.naranjaAlto:
+    case ColorRegion.naranjaBajo:
+      return const Color(0xFFFB8C00);
   }
 }
 
@@ -26,9 +31,14 @@ String nombreReglaDeColor(ColorRegion c) {
     case ColorRegion.verde:
       return 'Cualquiera';
     case ColorRegion.azul:
+    case ColorRegion.gris:
       return 'Todos iguales';
     case ColorRegion.morado:
       return 'Máximo 2 valores distintos';
+    case ColorRegion.naranjaAlto:
+      return 'Solo del 4 al 6';
+    case ColorRegion.naranjaBajo:
+      return 'Solo del 1 al 3';
   }
 }
 
@@ -42,9 +52,14 @@ String simboloDeRegion(ColorRegion c) {
     case ColorRegion.verde:
       return '✓';
     case ColorRegion.azul:
+    case ColorRegion.gris:
       return '=';
     case ColorRegion.morado:
       return '2';
+    case ColorRegion.naranjaAlto:
+      return '4-6';
+    case ColorRegion.naranjaBajo:
+      return '1-3';
   }
 }
 
@@ -53,6 +68,7 @@ String simboloDeRegion(ColorRegion c) {
 Color colorTextoSobre(ColorRegion c) {
   switch (c) {
     case ColorRegion.amarillo:
+    case ColorRegion.gris:
       return Colors.black87;
     default:
       return Colors.white;
@@ -62,7 +78,11 @@ Color colorTextoSobre(ColorRegion c) {
 /// Fila de chips mostrando cada color del tablero, su símbolo y su
 /// regla, para que el jugador no tenga que memorizarlas.
 class LeyendaColores extends StatelessWidget {
-  const LeyendaColores({super.key});
+  /// Colores a mostrar (los que tiene el nivel actual). Si es null se
+  /// muestran todos.
+  final Set<ColorRegion>? colores;
+
+  const LeyendaColores({super.key, this.colores});
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +90,9 @@ class LeyendaColores extends StatelessWidget {
       spacing: 8,
       runSpacing: 4,
       alignment: WrapAlignment.center,
-      children: ColorRegion.values.map((color) {
+      children: ColorRegion.values
+          .where((c) => colores == null || colores!.contains(c))
+          .map((color) {
         return Chip(
           avatar: CircleAvatar(
             backgroundColor: colorDeRegion(color),

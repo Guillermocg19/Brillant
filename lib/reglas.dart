@@ -29,3 +29,12 @@ bool cumpleMorado(List<int> numeros, int numero) {
   // Si aún no se han usado 2 valores distintos, este puede ser el segundo.
   return distintos.length < 2;
 }
+/// Naranja "4-6": solo se permiten números del 4 al 6 (se pueden repetir).
+bool cumpleNaranjaAlto(List<int> numeros, int numero) {
+  return numero >= 4 && numero <= 6;
+}
+
+/// Naranja "1-3": solo se permiten números del 1 al 3 (se pueden repetir).
+bool cumpleNaranjaBajo(List<int> numeros, int numero) {
+  return numero >= 1 && numero <= 3;
+}

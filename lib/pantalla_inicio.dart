@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'tablero.dart';
+import 'niveles.dart';
 import 'colores.dart';
 import 'transiciones.dart';
 import 'pantalla_valores_iniciales.dart';
 import 'pantalla_juego.dart';
-import 'juego.dart';
+
 
 /// Pantalla de bienvenida: el nombre del juego, una cuadrícula
 /// decorativa con los colores del tablero, y el botón para empezar.
-class PantallaInicio extends StatelessWidget {
+class PantallaInicio extends StatefulWidget {
   const PantallaInicio({super.key});
+
+  @override
+  State<PantallaInicio> createState() => _PantallaInicioState();
+}
+
+class _PantallaInicioState extends State<PantallaInicio> {
+  int _nivel = 0; // índice dentro de [niveles]
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +49,20 @@ class PantallaInicio extends StatelessWidget {
                 ),
               ),
               const Spacer(),
+              SegmentedButton<int>(
+                segments: [
+                  for (var i = 0; i < niveles.length; i++)
+                    ButtonSegment(
+                      value: i,
+                      label: Text('Nivel ${niveles[i].numero}'),
+                    ),
+                ],
+                selected: {_nivel},
+                showSelectedIcon: false,
+                onSelectionChanged: (seleccion) =>
+                    setState(() => _nivel = seleccion.first),
+              ),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -48,17 +70,16 @@ class PantallaInicio extends StatelessWidget {
                   icon: const Icon(Icons.play_arrow_rounded),
                   label: const Text('Jugar'),
                   onPressed: () {
+                    final nivel = niveles[_nivel];
                     Navigator.push(
                       context,
                       rutaConTransicion(
                         PantallaValoresIniciales(
-                          tablero: tableroNivel1,
-                          estrellas: estrellasNivel1,
+                          tablero: nivel.tablero,
+                          estrellas: nivel.estrellas,
                           alContinuar: (valoresIniciales) {
-                            final juego = TableroJuego.iniciar(
-                              tableroNivel1,
-                              valoresIniciales,
-                            );
+                        final juego = nivel.crearJuego(valoresIniciales);
+                            
                             Navigator.push(
                               context,
                               rutaConTransicion(

@@ -5,6 +5,7 @@ import 'tablero.dart';
 import 'valores_iniciales_bloc.dart';
 import 'colores.dart';
 import 'celda_widget.dart';
+import 'juego.dart';
 
 /// Pantalla previa al juego: el jugador coloca los números 1-6
 /// (sin repetir) en las casillas con estrella. Toda la lógica de
@@ -25,7 +26,8 @@ class PantallaValoresIniciales extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ValoresInicialesBloc(estrellas),
+      create: (_) => ValoresInicialesBloc(estrellas, tablero: tablero),
+
       child: _Vista(tablero: tablero, alContinuar: alContinuar),
     );
   }
@@ -77,7 +79,8 @@ class _Vista extends StatelessWidget {
                   style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                 ),
                 const SizedBox(height: 10),
-                const LeyendaColores(),
+                LeyendaColores(colores: tablero.expand((f) => f).toSet()),
+
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 8,
@@ -140,8 +143,9 @@ class _Vista extends StatelessWidget {
                               final valor = state.valores[pos];
 
                               final esJugable = esEstrella &&
-                                  valor == null &&
-                                  state.numeroSeleccionado != null;
+    valor == null &&
+    state.numeroSeleccionado != null &&
+    reglaParaColor(color)(const <int>[], state.numeroSeleccionado!);
 
                               return CeldaTablero(
                                 key: ValueKey('celda_${f}_$c'),
