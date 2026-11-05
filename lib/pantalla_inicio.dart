@@ -5,12 +5,14 @@ import 'colores.dart';
 import 'transiciones.dart';
 import 'pantalla_valores_iniciales.dart';
 import 'pantalla_juego.dart';
-
+import 'auth/servicio_auth.dart';
+import 'auth/pantalla_cuenta.dart';
 
 /// Pantalla de bienvenida: el nombre del juego, una cuadrícula
 /// decorativa con los colores del tablero, y el botón para empezar.
 class PantallaInicio extends StatefulWidget {
-  const PantallaInicio({super.key});
+  const PantallaInicio({super.key, this.auth});
+    final ServicioAuth? auth;
 
   @override
   State<PantallaInicio> createState() => _PantallaInicioState();
