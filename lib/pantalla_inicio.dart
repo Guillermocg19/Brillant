@@ -7,12 +7,14 @@ import 'pantalla_valores_iniciales.dart';
 import 'pantalla_juego.dart';
 import 'auth/servicio_auth.dart';
 import 'auth/pantalla_cuenta.dart';
+import 'multijugador/boton_multijugador.dart';
 
 /// Pantalla de bienvenida: el nombre del juego, una cuadrícula
 /// decorativa con los colores del tablero, y el botón para empezar.
 class PantallaInicio extends StatefulWidget {
   const PantallaInicio({super.key, this.auth});
-    final ServicioAuth? auth;
+
+  final ServicioAuth? auth;
 
   @override
   State<PantallaInicio> createState() => _PantallaInicioState();
@@ -30,6 +32,20 @@ class _PantallaInicioState extends State<PantallaInicio> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              if (widget.auth != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: IconButton(
+                    key: const ValueKey('boton_cuenta'),
+                    tooltip: 'Mi cuenta',
+                    icon: const Icon(Icons.account_circle_outlined, size: 30),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => PantallaCuenta(auth: widget.auth!),
+                      ),
+                    ),
+                  ),
+                ),
               const Spacer(),
               const _MosaicoDecorativo(),
               const SizedBox(height: 32),
@@ -80,8 +96,8 @@ class _PantallaInicioState extends State<PantallaInicio> {
                           tablero: nivel.tablero,
                           estrellas: nivel.estrellas,
                           alContinuar: (valoresIniciales) {
-                        final juego = nivel.crearJuego(valoresIniciales);
-                            
+                            final juego = nivel.crearJuego(valoresIniciales);
+
                             Navigator.push(
                               context,
                               rutaConTransicion(
@@ -95,6 +111,17 @@ class _PantallaInicioState extends State<PantallaInicio> {
                   },
                 ),
               ),
+              // El multijugador necesita tu cuenta: solo se ofrece con sesión.
+              if (widget.auth != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: BotonMultijugador(
+                    tokenProvider: () => widget.auth?.token,
+                  ),
+                ),
+              ],
               const SizedBox(height: 40),
             ],
           ),

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+
+
 /// Dirección del servidor. Se puede cambiar al ejecutar:
 ///   flutter run --dart-define=API_URL=https://mi-servidor.com
 String urlServidor() {
@@ -62,6 +64,7 @@ class ServicioAuth extends ChangeNotifier {
 
   String? _token;
   Usuario? _usuario;
+   String? get token => _token;
 
   /// La cuenta que tiene la sesión abierta (null si no hay sesión).
   Usuario? get usuario => _usuario;

@@ -3,6 +3,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import Database from 'better-sqlite3';
 import jwt from 'jsonwebtoken';
+import http from 'node:http';
+import { adjuntarMultijugador } from './multijugador/ws.js';
 import { hash, verify } from '@node-rs/argon2';
 
 const SECRETO = process.env.JWT_SECRET;
@@ -26,6 +28,18 @@ db.exec(`
 // ---------- Servidor ----------
 const app = express();
 app.use(helmet());
+// CORS solo para desarrollo en navegador: únicamente orígenes localhost.
+app.use((req, res, next) => {
+  const origen = req.get('origin');
+  if (origen && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origen)) {
+    res.set('Access-Control-Allow-Origin', origen);
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+    res.set('Vary', 'Origin');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 app.use(express.json({ limit: '10kb' }));
 
 // Máximo 20 intentos de entrar/registrarse cada 15 minutos por IP (frena la fuerza bruta).
@@ -113,4 +127,7 @@ app.use((err, req, res, next) => {
   res.status(err.status === 400 ? 400 : 500).json({ error: 'Petición no válida.' });
 });
 
-app.listen(PUERTO, () => console.log(`Servidor listo en http://localhost:${PUERTO}`));
+const servidorHttp = http.createServer(app);
+adjuntarMultijugador(servidorHttp, { db, secreto: SECRETO });
+servidorHttp.listen(PUERTO, () =>
+  console.log(`Servidor listo en http://localhost:${PUERTO} (WebSocket en /ws)`));
