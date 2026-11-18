@@ -10,6 +10,19 @@ import 'package:http/http.dart' as http;
 ///   flutter run --dart-define=API_URL=https://mi-servidor.com
 String urlServidor() {
   const definida = String.fromEnvironment('API_URL');
+  // En navegador, si la página se abrió desde otro dispositivo (p. ej. el
+  // celular entrando a http://192.168.137.1:8099), el servidor está en ese
+  // mismo equipo. Se usa la IP con la que se abrió la página y no una IP
+  // guardada al compilar, que deja de servir al cambiar de red (WiFi de casa
+  // -> hotspot). Solo se respeta API_URL si es https (ngrok, VPS...).
+  if (kIsWeb && !definida.startsWith('https://')) {
+    final pagina = Uri.base;
+    final host = pagina.host;
+    if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
+      final puerto = definida.isNotEmpty ? Uri.parse(definida).port : 3000;
+      return Uri(scheme: 'http', host: host, port: puerto).toString();
+    }
+  }
   if (definida.isNotEmpty) return definida;
   // En el emulador de Android "localhost" es el propio emulador: tu PC es 10.0.2.2.
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
