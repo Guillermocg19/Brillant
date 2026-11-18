@@ -12,7 +12,7 @@ Juego multijugador. Una persona **crea el servidor** y los demás **se conectan*
 ## Si vas a crear la partida
 
 1. Haz doble clic en **`iniciar-servidor.bat`**
-   (la primera vez, clic derecho y *Ejecutar como administrador*).
+   (clic derecho y *Ejecutar como administrador*, para que configure el firewall).
 2. Te mostrará unas direcciones como `http://192.168.1.45:3000`.
    Pásale a tus amigos la que **no** diga `localhost`.
 3. Deja esa ventana abierta mientras juegan.
