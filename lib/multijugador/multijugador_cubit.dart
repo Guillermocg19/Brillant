@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'multijugador_cliente.dart';
 import 'multijugador_modelos.dart';
+import 'sonidos.dart'; // NUEVO
 
 /// Aviso para la UI (snackbar). Sin `const` a propósito: cada instancia es
 /// distinta, así dos avisos con el mismo texto seguidos se muestran ambos.
@@ -84,7 +85,7 @@ class MultijugadorCubit extends Cubit<MultijugadorState> {
 
   /// Al abrir la pantalla: si estabas en una partida, vuelve a ella.
   Future<void> reanudar() async {
-    if (await _almacen.read(key: _claveEnPartida) == null) return;
+    if (await _leerEnPartida() == null) return;
     _reanudando = true;
     emit(state.copyWith(ocupado: true));
     await cliente.conectar();
@@ -114,6 +115,7 @@ class MultijugadorCubit extends Cubit<MultijugadorState> {
   void colocar({required int ancla, required int fila, required int columna}) {
     final sala = state.sala;
     if (sala == null) return;
+    unawaited(Sonidos.colocar()); // NUEVO
     _enviar({
       'type': 'place',
       'round': sala.round,
@@ -188,10 +190,28 @@ class MultijugadorCubit extends Cubit<MultijugadorState> {
       case 'joined':
         _accionPendiente = null;
         _miId = msg['playerId'] as String?;
-        await _almacen.write(key: _claveEnPartida, value: msg['code'] as String);
+        await _guardarEnPartida(msg['code'] as String);
       case 'state':
         _reanudando = false;
-        emit(state.copyWith(sala: RoomSnapshot.fromJson(msg), ocupado: false));
+        // NUEVO: sonidos y aviso de nueva ronda al comparar con el estado anterior.
+        final nueva = RoomSnapshot.fromJson(msg);
+        final previa = state.sala;
+        Aviso? avisoRonda;
+        if (previa != null) {
+          if (nueva.status == RoomStatus.jugando &&
+              nueva.round > previa.round &&
+              nueva.dice.length == 2) {
+            unawaited(Sonidos.dados());
+            avisoRonda = Aviso(
+              'Ronda ${nueva.round}: dados ${nueva.dice[0]} y ${nueva.dice[1]}',
+            );
+          }
+          if (nueva.status == RoomStatus.terminada &&
+              previa.status != RoomStatus.terminada) {
+            unawaited(nueva.iWon ? Sonidos.victoria() : Sonidos.derrota());
+          }
+        }
+        emit(state.copyWith(sala: nueva, ocupado: false, aviso: avisoRonda));
       case 'event':
         final texto = _textoEvento(msg);
         if (texto != null) emit(state.copyWith(aviso: Aviso(texto)));
@@ -249,11 +269,34 @@ class MultijugadorCubit extends Cubit<MultijugadorState> {
     return null;
   }
 
+  // NUEVO: el almacenamiento seguro del navegador falla si la página no es
+  // HTTPS (por ejemplo http://192.168.x.x). Estas tres funciones evitan que
+  // ese fallo rompa el juego: solo se pierde poder reanudar tras recargar.
+  Future<String?> _leerEnPartida() async {
+    try {
+      return await _almacen.read(key: _claveEnPartida);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _guardarEnPartida(String codigo) async {
+    try {
+      await _almacen.write(key: _claveEnPartida, value: codigo);
+    } catch (_) {}
+  }
+
+  Future<void> _borrarEnPartida() async {
+    try {
+      await _almacen.delete(key: _claveEnPartida);
+    } catch (_) {}
+  }
+
   Future<void> _limpiar() async {
     _accionPendiente = null;
     _reanudando = false;
     _miId = null;
-    await _almacen.delete(key: _claveEnPartida);
+    await _borrarEnPartida();
   }
 
   @override

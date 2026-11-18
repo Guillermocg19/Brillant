@@ -21,12 +21,40 @@ if not exist pubspec.yaml (
 )
 
 where flutter >nul 2>nul
-if errorlevel 1 (
-  echo [ERROR] Flutter no esta instalado o no esta en el PATH.
-  echo Instalalo desde https://docs.flutter.dev/get-started/install y abre este archivo de nuevo.
-  pause
-  exit /b 1
-)
+if not errorlevel 1 goto flutterListo
+
+rem ---- Flutter no esta en el PATH de esta ventana: se busca solo ----
+set "FLUTTER_BIN="
+set "RUTAFLUTTER=%~dp0.ruta-flutter.txt"
+if exist "%RUTAFLUTTER%" set /p FLUTTER_BIN=<"%RUTAFLUTTER%"
+if defined FLUTTER_BIN if exist "%FLUTTER_BIN%\flutter.bat" goto flutterEncontrado
+
+for %%D in ("%FLUTTER_ROOT%\bin" "%USERPROFILE%\flutter\bin" "%USERPROFILE%\Desktop\Flutter\flutter\bin" "%USERPROFILE%\Desktop\flutter\bin" "%USERPROFILE%\Documents\flutter\bin" "%USERPROFILE%\development\flutter\bin" "%USERPROFILE%\Downloads\flutter\bin" "%LOCALAPPDATA%\flutter\bin" "C:\src\flutter\bin" "C:\flutter\bin" "C:\tools\flutter\bin") do if exist "%%~D\flutter.bat" set "FLUTTER_BIN=%%~D"
+if defined FLUTTER_BIN if exist "%FLUTTER_BIN%\flutter.bat" goto flutterEncontrado
+
+echo.
+echo No encuentro Flutter. Escribe la carpeta donde esta instalado.
+echo Ejemplo:  C:\src\flutter    o    C:\Users\tu-usuario\Desktop\Flutter\flutter
+set "FLUTTER_BIN="
+set /p FLUTTER_BIN=Carpeta de Flutter: 
+if not defined FLUTTER_BIN goto sinFlutter
+set "FLUTTER_BIN=%FLUTTER_BIN:"=%"
+if exist "%FLUTTER_BIN%\bin\flutter.bat" set "FLUTTER_BIN=%FLUTTER_BIN%\bin"
+if not exist "%FLUTTER_BIN%\flutter.bat" goto sinFlutter
+
+:flutterEncontrado
+>"%RUTAFLUTTER%" echo %FLUTTER_BIN%
+set "PATH=%FLUTTER_BIN%;%PATH%"
+goto flutterListo
+
+:sinFlutter
+echo.
+echo [ERROR] No se encontro Flutter en esa carpeta.
+echo Instalalo desde https://docs.flutter.dev/get-started/install y abre este archivo de nuevo.
+pause
+exit /b 1
+
+:flutterListo
 
 set "GUARDADO=%~dp0.ultimo-servidor.txt"
 set "ULTIMO="
@@ -111,8 +139,22 @@ set "DISPOSITIVO=windows"
 
 :dispositivoElegido
 set "EXTRA="
-if /i "%DISPOSITIVO%"=="chrome" set "EXTRA=--web-port=8099"
-if /i "%DISPOSITIVO%"=="edge" set "EXTRA=--web-port=8099"
+if /i "%DISPOSITIVO%"=="chrome" goto elegirPuerto
+if /i "%DISPOSITIVO%"=="edge" goto elegirPuerto
+goto iniciar
+
+rem ---- Primer puerto libre desde el 8099 (evita chocar con otra ventana abierta) ----
+:elegirPuerto
+set "PUERTOWEB=8099"
+:probarPuerto
+netstat -ano | findstr /r /c:":%PUERTOWEB% .*LISTENING" >nul
+if errorlevel 1 goto puertoLibre
+set /a PUERTOWEB+=1
+if %PUERTOWEB% LEQ 8120 goto probarPuerto
+:puertoLibre
+set "EXTRA=--web-port=%PUERTOWEB%"
+
+:iniciar
 
 echo.
 echo Iniciando Brillant en "%DISPOSITIVO%" con servidor %URL% ...
@@ -123,6 +165,6 @@ if errorlevel 1 (
   echo.
   echo Si el error menciona "symlink" o "Developer Mode":
   echo ejecuta  start ms-settings:developers  y activa el Modo desarrollador.
-  echo Si el puerto 8099 esta ocupado, cierra otra ventana de Brillant que siga abierta.
+  echo Si dice que un puerto esta ocupado, cierra las otras ventanas de Brillant que sigan abiertas.
 )
 pause

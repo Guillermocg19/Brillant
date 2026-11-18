@@ -169,9 +169,13 @@ List<int> valoresPorColorYPosicion(
     if (vertical != null || horizontal != null) {
       final centro = _centroide(celdasZona);
       if (vertical != null &&
-          _clasificarVertical(centro.x, filas) != vertical) continue;
+          _clasificarVertical(centro.x, filas) != vertical) {
+        continue;
+      }
       if (horizontal != null &&
-          _clasificarHorizontal(centro.y, columnas) != horizontal) continue;
+          _clasificarHorizontal(centro.y, columnas) != horizontal) {
+        continue;
+      }
     }
 
     resultado.addAll(

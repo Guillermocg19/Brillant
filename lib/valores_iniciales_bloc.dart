@@ -74,9 +74,8 @@ class ValoresInicialesBloc
   ValoresInicialesBloc(
     Set<Point<int>> estrellas, {
     Random? random,
-    List<List<ColorRegion>>? tablero,
+    this._tablero,
   })  : _random = random ?? Random(),
-        _tablero = tablero,
         super(ValoresInicialesState(
           valores: const {},
           numeroSeleccionado: null,

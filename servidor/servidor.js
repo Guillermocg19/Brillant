@@ -6,6 +6,9 @@ import jwt from 'jsonwebtoken';
 import http from 'node:http';
 import { adjuntarMultijugador } from './multijugador/ws.js';
 import { hash, verify } from '@node-rs/argon2';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 
 const SECRETO = process.env.JWT_SECRET;
 if (!SECRETO || SECRETO.length < 32) {
@@ -27,6 +30,7 @@ db.exec(`
 
 // ---------- Servidor ----------
 const app = express();
+app.use(express.static(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'build', 'web')));
 app.use(helmet());
 // CORS solo para desarrollo en navegador: únicamente orígenes localhost.
 app.use((req, res, next) => {

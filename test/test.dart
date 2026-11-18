@@ -4,7 +4,6 @@ import 'package:brillant_app/reglas.dart';
 import 'package:brillant_app/tablero.dart';
 
 
-import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   // ---------- REGLAS POR COLOR ----------

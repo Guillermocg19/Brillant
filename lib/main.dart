@@ -17,6 +17,12 @@ class BrillantApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+            locale: const Locale('en'),
+      supportedLocales: const [Locale('en')],
+      localizationsDelegates: const [
+        DefaultMaterialLocalizations.delegate,
+        DefaultWidgetsLocalizations.delegate,
+      ],
       title: 'Brillant',
       debugShowCheckedModeBanner: false,
       theme: temaBrillant,

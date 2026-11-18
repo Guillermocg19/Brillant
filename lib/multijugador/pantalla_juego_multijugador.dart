@@ -5,8 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../celda_widget.dart';
 import '../colores.dart';
+import 'hoja_partida.dart'; // NUEVO
 import 'multijugador_cubit.dart';
 import 'multijugador_modelos.dart';
+import 'sonidos.dart'; // NUEVO
 
 /// Igual que tu PantallaJuego, pero en línea: los dados son los mismos para
 /// todos (los tira el servidor), eliges un dado como ANCLA y colocas el otro;
@@ -97,6 +99,18 @@ class _PantallaJuegoMultijugadorState extends State<PantallaJuegoMultijugador> {
       appBar: AppBar(
         title: Text('Ronda ${sala.round}'),
         actions: [
+          // NUEVO: silenciar / activar los sonidos.
+          IconButton(
+            tooltip: Sonidos.activado ? 'Silenciar' : 'Activar sonido',
+            icon: Icon(Sonidos.activado ? Icons.volume_up : Icons.volume_off),
+            onPressed: () => setState(() => Sonidos.activado = !Sonidos.activado),
+          ),
+          // NUEVO: tableros de todos los jugadores y registro de las rondas.
+          IconButton(
+            tooltip: 'Tableros y registro',
+            icon: const Icon(Icons.dashboard_outlined),
+            onPressed: () => mostrarHojaPartida(context),
+          ),
           if (yo.active)
             IconButton(
               tooltip: 'Conceder',
@@ -171,7 +185,7 @@ class _PantallaJuegoMultijugadorState extends State<PantallaJuegoMultijugador> {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -191,7 +205,7 @@ class _PantallaJuegoMultijugadorState extends State<PantallaJuegoMultijugador> {
                           final esPendiente =
                               pend != null && pend.fila == f && pend.columna == c;
                           final valor = esPendiente
-                              ? pend!.valor
+                              ? pend.valor
                               : (sala.board.isEmpty ? null : sala.board[f][c]);
                           final esValida = validas.contains(Point(f, c));
                           return CeldaTablero(
@@ -294,7 +308,7 @@ class _Dado extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
+                      color: Colors.black.withValues(alpha: 0.12),
                       blurRadius: 6,
                       offset: const Offset(0, 3),
                     ),

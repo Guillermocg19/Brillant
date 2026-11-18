@@ -5,10 +5,10 @@ title Brillant - Servidor
 rem ------------------------------------------------------------
 rem  Arranca el servidor de Brillant.
 rem  Coloca este archivo en la RAIZ del repositorio (junto a la carpeta "servidor").
-rem  Si tu archivo principal no se llama index.js / server.js / app.js / main.js,
+rem  Si tu archivo principal no se llama servidor.js / index.js / server.js / app.js / main.js,
 rem  escribe su nombre aqui:
 rem ------------------------------------------------------------
-set "ARCHIVO=servidor.js"
+set "ARCHIVO="
 
 if not exist "%~dp0servidor\" (
   echo [ERROR] No encuentro la carpeta "servidor" junto a este archivo.
@@ -36,7 +36,7 @@ if errorlevel 1 (
 )
 
 rem ---- Archivo principal ----
-for %%F in (index.js server.js app.js main.js) do if not defined ARCHIVO if exist "%%F" set "ARCHIVO=%%F"
+for %%F in (servidor.js index.js server.js app.js main.js) do if not defined ARCHIVO if exist "%%F" set "ARCHIVO=%%F"
 if not defined ARCHIVO (
   echo [ERROR] No encontre el archivo principal del servidor en la carpeta "servidor".
   echo Edita este .bat y escribe su nombre en la linea:  set "ARCHIVO="

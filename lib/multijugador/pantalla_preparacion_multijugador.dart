@@ -225,7 +225,7 @@ class _PantallaPreparacionMultijugadorState
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -412,7 +412,7 @@ class _MarcoEstrellaState extends State<_MarcoEstrella>
                       ? null
                       : [
                           BoxShadow(
-                            color: Colors.amber.withOpacity(0.30 + 0.40 * t),
+                            color: Colors.amber.withValues(alpha: 0.30 + 0.40 * t),
                             blurRadius: 5 + 9 * t,
                             spreadRadius: 1 + 2 * t,
                           ),
@@ -426,7 +426,7 @@ class _MarcoEstrellaState extends State<_MarcoEstrella>
                           child: FittedBox(
                             child: Icon(
                               Icons.star_rounded,
-                              color: Colors.white.withOpacity(widget.atenuada ? 0.35 : 0.95),
+                              color: Colors.white.withValues(alpha: widget.atenuada ? 0.35 : 0.95),
                               shadows: const [
                                 Shadow(color: Colors.black38, blurRadius: 3),
                               ],
@@ -517,7 +517,7 @@ class _NumeroPaleta extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 6,
                 offset: const Offset(0, 3),
               ),

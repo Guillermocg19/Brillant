@@ -18,6 +18,7 @@ class PlayerInfo extends Equatable {
     required this.setupReady,
     required this.filled,
     required this.isHost,
+    this.board, // NUEVO
   });
 
   factory PlayerInfo.fromJson(Map<String, dynamic> j) => PlayerInfo(
@@ -31,6 +32,13 @@ class PlayerInfo extends Equatable {
         setupReady: j['setupReady'] as bool,
         filled: j['filled'] as int,
         isHost: j['isHost'] as bool,
+        // NUEVO: el tablero de este jugador (null si todavía no se puede ver).
+        board: j['board'] == null
+            ? null
+            : [
+                for (final fila in (j['board'] as List))
+                  [for (final v in (fila as List)) v as int?],
+              ],
       );
 
   final String id;
@@ -52,9 +60,15 @@ class PlayerInfo extends Equatable {
   final int filled;
   final bool isHost;
 
+  /// NUEVO: su tablero (valor por celda, null = vacía). Es null en el lobby
+  /// y, durante la preparación, en el de los demás jugadores.
+  final List<List<int?>>? board;
+
   @override
-  List<Object?> get props =>
-      [id, name, connected, active, lobbyReady, roundReady, score, setupReady, filled, isHost];
+  List<Object?> get props => [
+        id, name, connected, active, lobbyReady, roundReady, score,
+        setupReady, filled, isHost, board,
+      ];
 }
 
 /// Casillas donde puedes poner [valor] si eliges [ancla]. Las calcula el
@@ -116,6 +130,77 @@ class SetupInfo extends Equatable {
   List<Object?> get props => [stars, allowed, confirmed];
 }
 
+/// NUEVO: una jugada dentro del registro de una ronda.
+class PlayLog extends Equatable {
+  const PlayLog({
+    required this.id,
+    required this.name,
+    this.ancla,
+    this.valor,
+    this.fila,
+    this.columna,
+    this.passed = false,
+    this.noMoves = false,
+  });
+
+  factory PlayLog.fromJson(Map<String, dynamic> j) => PlayLog(
+        id: j['id'] as String,
+        name: j['name'] as String,
+        ancla: j['ancla'] as int?,
+        valor: j['valor'] as int?,
+        fila: j['fila'] as int?,
+        columna: j['columna'] as int?,
+        passed: j['passed'] as bool? ?? false,
+        noMoves: j['noMoves'] as bool? ?? false,
+      );
+
+  final String id;
+  final String name;
+
+  /// Dado que eligió como ancla y número que colocó (null si pasó).
+  final int? ancla;
+  final int? valor;
+
+  /// Dónde lo puso, empezando en 0 (null si pasó).
+  final int? fila;
+  final int? columna;
+
+  /// Pasó la ronda sin colocar nada.
+  final bool passed;
+
+  /// Pasó porque con esos dados no tenía ninguna jugada posible.
+  final bool noMoves;
+
+  @override
+  List<Object?> get props =>
+      [id, name, ancla, valor, fila, columna, passed, noMoves];
+}
+
+/// NUEVO: una ronda ya cerrada: los dados y lo que hizo cada jugador.
+class RoundLog extends Equatable {
+  const RoundLog({
+    required this.round,
+    required this.dice,
+    required this.plays,
+  });
+
+  factory RoundLog.fromJson(Map<String, dynamic> j) => RoundLog(
+        round: j['round'] as int,
+        dice: (j['dice'] as List).cast<int>(),
+        plays: [
+          for (final p in (j['plays'] as List))
+            PlayLog.fromJson(p as Map<String, dynamic>),
+        ],
+      );
+
+  final int round;
+  final List<int> dice;
+  final List<PlayLog> plays;
+
+  @override
+  List<Object?> get props => [round, dice, plays];
+}
+
 class GameResult extends Equatable {
   const GameResult({
     required this.reason,
@@ -160,6 +245,8 @@ class RoomSnapshot extends Equatable {
     required this.canPlay,
     required this.setup,
     required this.result,
+    this.log = const [], // NUEVO
+    this.stars = const [], // NUEVO
   });
 
   factory RoomSnapshot.fromJson(Map<String, dynamic> j) {
@@ -210,6 +297,16 @@ class RoomSnapshot extends Equatable {
       canPlay: j['canPlay'] as bool,
       setup: setup == null ? null : SetupInfo.fromJson(setup),
       result: result == null ? null : GameResult.fromJson(result),
+      // NUEVO: registro de rondas cerradas y casillas con estrella del nivel.
+      log: [
+        for (final r in ((j['log'] as List?) ?? const []))
+          RoundLog.fromJson(r as Map<String, dynamic>),
+      ],
+      stars: [
+        for (final c
+            in ((j['stars'] as List?) ?? const []).cast<List<dynamic>>())
+          Point<int>(c[0] as int, c[1] as int),
+      ],
     );
   }
 
@@ -240,6 +337,12 @@ class RoomSnapshot extends Equatable {
   final SetupInfo? setup;
   final GameResult? result;
 
+  /// NUEVO: rondas ya cerradas, de la primera a la última.
+  final List<RoundLog> log;
+
+  /// NUEVO: casillas con estrella del nivel (para la vista previa).
+  final List<Point<int>> stars;
+
   PlayerInfo get me => players.firstWhere((p) => p.id == youId);
   bool get amHost => hostId == youId;
   bool get iWon => result?.winnerIds.contains(youId) ?? false;
@@ -250,6 +353,6 @@ class RoomSnapshot extends Equatable {
   @override
   List<Object?> get props => [
         code, nivel, status, hostId, youId, round, dice, grid, board,
-        players, pending, options, canPlay, setup, result,
+        players, pending, options, canPlay, setup, result, log, stars,
       ];
 }

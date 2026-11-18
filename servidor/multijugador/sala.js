@@ -72,6 +72,7 @@ export class Sala {
     this.resultado = null;
     this.zonas = null;
     this.completadasPorZona = new Map(); // zona -> cuántos ya la completaron
+        this.historial = []; // jugadas de cada ronda ya cerrada
     this.cerrada = false;
 
     this._timerLobby = this._temporizador(ttlLobbyMs, () => {
@@ -349,6 +350,17 @@ export class Sala {
   }
 
   _resolverRonda(vivos) {
+        // Registro público de la ronda: se revela cuando todos ya jugaron.
+    this.historial.push({
+      round: this.ronda,
+      dice: [...this.dados],
+      plays: vivos.map((p) => {
+        const pl = p.pendiente;
+        return pl
+          ? { id: p.id, name: p.nombre, ancla: pl.ancla, valor: pl.valor, fila: pl.fila, columna: pl.columna }
+          : { id: p.id, name: p.nombre, passed: true, noMoves: p.sinMovimiento };
+      }),
+    });
     for (const p of vivos) {
       const pl = p.pendiente;
       if (pl) p.tablero.colocar(pl.fila, pl.columna, pl.valor);
@@ -461,8 +473,14 @@ export class Sala {
   }
 
   // ───────────────────── Mensajes salientes ─────────────────────
-
-  snapshotPara(yo) {
+  /** Tablero de [p] tal como lo ve [yo]. Durante la preparación nadie ve
+   *  los números iniciales de los demás (se podrían copiar). */
+  _tableroVisible(p, yo) {
+    if (!p.tablero) return null;
+    if (this.estado === 'preparando' && p.id !== yo.id) return null;
+    return p.tablero.copiaCeldas();
+  }
+   snapshotPara(yo) {
     const jugando = this.estado === 'jugando' && yo.activo && yo.tablero;
     const opciones = [];
     if (jugando) {
@@ -493,6 +511,7 @@ export class Sala {
         setupReady: p.preparado,
         filled: p.tablero ? p.tablero.llenas : 0,
         isHost: p.id === this.hostId,
+        board: this._tableroVisible(p, yo),
       })),
       yourPending: yo.pendiente
         ? { ancla: yo.pendiente.ancla, valor: yo.pendiente.valor, fila: yo.pendiente.fila, columna: yo.pendiente.columna }
@@ -503,6 +522,8 @@ export class Sala {
         ? { stars: NIVELES[this.nivel].estrellas, allowed: this.permitidos, confirmed: yo.preparado }
         : null,
       result: this.resultado,
+      log: this.historial,
+      stars: NIVELES[this.nivel].estrellas,
     };
   }
 

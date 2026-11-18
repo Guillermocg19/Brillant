@@ -33,19 +33,19 @@ class CeldaTablero extends StatelessWidget {
           color: colorFondo,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: resaltada ? Colors.white : Colors.black.withOpacity(0.15),
+            color: resaltada ? Colors.white : Colors.black.withValues(alpha: 0.15),
             width: resaltada ? 3 : 1,
           ),
           boxShadow: [
             if (resaltada)
               BoxShadow(
-                color: colorFondo.withOpacity(0.7),
+                color: colorFondo.withValues(alpha: 0.7),
                 blurRadius: 10,
                 spreadRadius: 1,
               )
             else
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 2,
                 offset: const Offset(0, 1),
               ),
@@ -62,7 +62,7 @@ class CeldaTablero extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
-                  color: colorTexto.withOpacity(0.45),
+                  color: colorTexto.withValues(alpha: 0.45),
                 ),
               ),
             ),

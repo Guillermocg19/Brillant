@@ -9,14 +9,17 @@ import 'package:http/http.dart' as http;
 /// Dirección del servidor. Se puede cambiar al ejecutar:
 ///   flutter run --dart-define=API_URL=https://mi-servidor.com
 String urlServidor() {
+
   const definida = String.fromEnvironment('API_URL');
   if (definida.isNotEmpty) return definida;
+  if (kIsWeb) return Uri.base.origin; // la página la sirve el propio servidor
   // En el emulador de Android "localhost" es el propio emulador: tu PC es 10.0.2.2.
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     return 'http://10.0.2.2:3000';
   }
   return 'http://localhost:3000';
 }
+
 
 class Usuario {
   final int id;
@@ -134,21 +137,25 @@ class ServicioAuth extends ChangeNotifier {
 
   // ---------- Internos ----------
 
-  Future<void> _entrar(Map<String, dynamic> datos) async {
-    _token = datos['token'] as String;
-    _usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
-    cuentaBorrada = false;
-    // El token se guarda cifrado (Keystore / Keychain), no en SharedPreferences.
+ Future<void> _entrar(Map<String, dynamic> datos) async {
+  _token = datos['token'] as String;
+  _usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
+  cuentaBorrada = false;
+  try {
     await _almacen.write(key: _claveToken, value: _token);
-    notifyListeners();
+  } catch (_) {
+    // En web sin HTTPS no se puede guardar cifrado: la sesión dura hasta cerrar la pestaña.
   }
-
-  Future<void> _salir() async {
-    _token = null;
-    _usuario = null;
+  notifyListeners();
+}
+Future<void> _salir() async {
+  _token = null;
+  _usuario = null;
+  try {
     await _almacen.delete(key: _claveToken);
-    notifyListeners();
-  }
+  } catch (_) {}
+  notifyListeners();
+}
 
   Future<Map<String, dynamic>> _pedir(
     String metodo,
