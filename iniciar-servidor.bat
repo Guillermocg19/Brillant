@@ -64,18 +64,33 @@ if not exist .env (
 set "PUERTO=3000"
 for /f "tokens=1,* delims==" %%A in ('findstr /b "PORT=" .env') do set "PUERTO=%%B"
 
-rem ---- Firewall de Windows (necesita administrador solo la primera vez) ----
-netsh advfirewall firewall show rule name="Brillant servidor" >nul 2>nul
+rem ---- Firewall de Windows (necesita administrador) ----
+rem Las redes creadas (hotspot) Windows las marca como "publicas". Si alguna vez
+rem se respondio "Cancelar" al aviso del firewall, Windows crea reglas que
+rem BLOQUEAN node.exe en redes publicas, y un bloqueo gana a cualquier permiso.
+net session >nul 2>nul
 if errorlevel 1 (
-  netsh advfirewall firewall add rule name="Brillant servidor" dir=in action=allow protocol=TCP localport=%PUERTO% >nul 2>nul
-  if errorlevel 1 (
-    echo.
-    echo [AVISO] No pude abrir el puerto %PUERTO% en el firewall: falta ejecutar como administrador.
-    echo Si otros equipos no logran conectarse, cierra esto y abre el .bat con
-    echo clic derecho - Ejecutar como administrador.
-  ) else (
-    echo Puerto %PUERTO% abierto en el firewall.
-  )
+  echo.
+  echo [AVISO] Sin permisos de administrador no puedo revisar el firewall.
+  echo Si otros equipos no logran conectarse, cierra esto y abre el .bat con
+  echo clic derecho - Ejecutar como administrador.
+  goto finFirewall
+)
+powershell -NoProfile -Command "Get-NetFirewallApplicationFilter -Program '*node.exe' -ErrorAction SilentlyContinue | Get-NetFirewallRule | Where-Object Action -eq Block | Remove-NetFirewallRule" >nul 2>nul
+netsh advfirewall firewall delete rule name="Brillant servidor" >nul 2>nul
+netsh advfirewall firewall add rule name="Brillant servidor" dir=in action=allow protocol=TCP localport=%PUERTO% profile=any >nul 2>nul
+if errorlevel 1 (
+  echo [AVISO] No pude abrir el puerto %PUERTO% en el firewall.
+) else (
+  echo Firewall listo: puerto %PUERTO% abierto en redes privadas y publicas.
+)
+:finFirewall
+
+rem ---- Juego web para el telefono (build\web) ----
+if not exist "%~dp0build\web\index.html" (
+  echo.
+  echo No esta compilado el juego web ^(para jugar desde el telefono^).
+  call "%~dp0compilar-web.bat" nopause
 )
 
 echo.
@@ -86,6 +101,8 @@ echo  Desde otros equipos de tu red usa una de estas direcciones:
 for /f "tokens=2 delims=:" %%I in ('ipconfig ^| findstr /i "IPv4"') do (
   for /f "tokens=*" %%J in ("%%I") do echo      http://%%J:%PUERTO%
 )
+echo  Telefono: abre esa misma direccion en el navegador y juega ahi.
+echo  ^(Si cambiaste el codigo del juego, ejecuta compilar-web.bat^)
 echo.
 echo  Para detenerlo: Ctrl+C
 echo ============================================================

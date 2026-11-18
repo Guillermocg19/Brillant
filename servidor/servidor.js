@@ -4,11 +4,11 @@ import rateLimit from 'express-rate-limit';
 import Database from 'better-sqlite3';
 import jwt from 'jsonwebtoken';
 import http from 'node:http';
-import { adjuntarMultijugador } from './multijugador/ws.js';
-import { hash, verify } from '@node-rs/argon2';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
+import { adjuntarMultijugador } from './multijugador/ws.js';
+import { hash, verify } from '@node-rs/argon2';
 
 const SECRETO = process.env.JWT_SECRET;
 if (!SECRETO || SECRETO.length < 32) {
@@ -30,8 +30,13 @@ db.exec(`
 
 // ---------- Servidor ----------
 const app = express();
-app.use(express.static(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'build', 'web')));
-app.use(helmet());
+// La CSP por defecto de helmet incluye "upgrade-insecure-requests" y bloquea
+// los scripts/wasm de Flutter: se desactiva para poder servir el juego por http.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  strictTransportSecurity: false,
+}));
 // CORS para la versión web: se aceptan páginas servidas desde este equipo
 // (localhost) o desde cualquier IP de red local (WiFi de casa, hotspot del
 // celular, hotspot de Windows 192.168.137.x, Tailscale 100.64-127.x...).
@@ -137,6 +142,21 @@ app.delete('/cuenta', requiereToken, limite, async (req, res) => {
   res.status(204).end();
 });
 
+// ---------- El juego (versión web) ----------
+// Si existe build/web (flutter build web), se sirve aquí mismo: desde el
+// teléfono basta abrir http://IP-DEL-SERVIDOR:3000 en el navegador.
+const CARPETA_WEB = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  process.env.WEB_DIR || '../build/web');
+const INDEX_WEB = path.join(CARPETA_WEB, 'index.html');
+app.use(express.static(CARPETA_WEB, { index: 'index.html' }));
+app.get('/', (req, res) => {
+  if (fs.existsSync(INDEX_WEB)) return res.sendFile(INDEX_WEB);
+  res.type('text').send(
+    'Servidor de Brillant funcionando, pero falta compilar el juego web.\n' +
+    'En la PC del servidor ejecuta compilar-web.bat y vuelve a abrir esta página.');
+});
+
 // Cualquier error (JSON roto, etc.) se responde sin revelar detalles internos.
 app.use((err, req, res, next) => {
   res.status(err.status === 400 ? 400 : 500).json({ error: 'Petición no válida.' });
@@ -144,5 +164,9 @@ app.use((err, req, res, next) => {
 
 const servidorHttp = http.createServer(app);
 adjuntarMultijugador(servidorHttp, { db, secreto: SECRETO });
-servidorHttp.listen(PUERTO, () =>
-  console.log(`Servidor listo en http://localhost:${PUERTO} (WebSocket en /ws)`));
+servidorHttp.listen(PUERTO, () => {
+  console.log(`Servidor listo en http://localhost:${PUERTO} (WebSocket en /ws)`);
+  console.log(fs.existsSync(INDEX_WEB)
+    ? 'Juego web disponible: abre http://IP-DE-ESTA-PC:' + PUERTO + ' en el telefono.'
+    : 'Juego web NO compilado (falta build/web): ejecuta compilar-web.bat.');
+});
