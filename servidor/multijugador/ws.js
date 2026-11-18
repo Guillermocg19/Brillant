@@ -1,6 +1,6 @@
 import { WebSocketServer } from 'ws';
 import jwt from 'jsonwebtoken';
-import { Gestor } from './Gestor.js';
+import { Gestor } from './gestor.js';
 import { ErrorSala } from './sala.js';
 
 /**
