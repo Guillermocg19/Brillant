@@ -32,10 +32,21 @@ db.exec(`
 const app = express();
 app.use(express.static(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'build', 'web')));
 app.use(helmet());
-// CORS solo para desarrollo en navegador: únicamente orígenes localhost.
+// CORS para la versión web: se aceptan páginas servidas desde este equipo
+// (localhost) o desde cualquier IP de red local (WiFi de casa, hotspot del
+// celular, hotspot de Windows 192.168.137.x, Tailscale 100.64-127.x...).
+// La sesión viaja en "Authorization: Bearer", no en cookies, así que no hay CSRF.
+const ORIGEN_LOCAL = new RegExp(
+  '^https?://(' +
+    'localhost|127\\.0\\.0\\.1|' +
+    '10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|' +
+    '192\\.168\\.\\d{1,3}\\.\\d{1,3}|' +
+    '172\\.(1[6-9]|2\\d|3[01])\\.\\d{1,3}\\.\\d{1,3}|' +
+    '100\\.(6[4-9]|[7-9]\\d|1[01]\\d|12[0-7])\\.\\d{1,3}\\.\\d{1,3}' +
+  ')(:\\d+)?$');
 app.use((req, res, next) => {
   const origen = req.get('origin');
-  if (origen && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origen)) {
+  if (origen && ORIGEN_LOCAL.test(origen)) {
     res.set('Access-Control-Allow-Origin', origen);
     res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.set('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
