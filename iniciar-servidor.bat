@@ -86,6 +86,13 @@ if errorlevel 1 (
 )
 :finFirewall
 
+rem ---- Juego web para el telefono (build\web) ----
+if not exist "%~dp0build\web\index.html" (
+  echo.
+  echo No esta compilado el juego web ^(para jugar desde el telefono^).
+  call "%~dp0compilar-web.bat" nopause
+)
+
 echo.
 echo ============================================================
 echo  SERVIDOR BRILLANT
@@ -94,6 +101,8 @@ echo  Desde otros equipos de tu red usa una de estas direcciones:
 for /f "tokens=2 delims=:" %%I in ('ipconfig ^| findstr /i "IPv4"') do (
   for /f "tokens=*" %%J in ("%%I") do echo      http://%%J:%PUERTO%
 )
+echo  Telefono: abre esa misma direccion en el navegador y juega ahi.
+echo  ^(Si cambiaste el codigo del juego, ejecuta compilar-web.bat^)
 echo.
 echo  Para detenerlo: Ctrl+C
 echo ============================================================

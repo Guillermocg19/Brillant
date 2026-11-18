@@ -9,30 +9,27 @@ import 'package:http/http.dart' as http;
 /// Dirección del servidor. Se puede cambiar al ejecutar:
 ///   flutter run --dart-define=API_URL=https://mi-servidor.com
 String urlServidor() {
-
   const definida = String.fromEnvironment('API_URL');
-  // En navegador, si la página se abrió desde otro dispositivo (p. ej. el
-  // celular entrando a http://192.168.137.1:8099), el servidor está en ese
-  // mismo equipo. Se usa la IP con la que se abrió la página y no una IP
-  // guardada al compilar, que deja de servir al cambiar de red (WiFi de casa
-  // -> hotspot). Solo se respeta API_URL si es https (ngrok, VPS...).
   if (kIsWeb && !definida.startsWith('https://')) {
     final pagina = Uri.base;
     final host = pagina.host;
-    if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
-      final puerto = definida.isNotEmpty ? Uri.parse(definida).port : 3000;
+    final esLocal = host.isEmpty || host == 'localhost' || host == '127.0.0.1';
+    if (!esLocal) {
+      // Página abierta desde otro dispositivo (p. ej. el teléfono entrando a
+      // http://192.168.137.1:3000). El servidor está en ese mismo equipo: se
+      // usa esa IP y no una guardada al compilar, que cambia con la red.
+      if (definida.isEmpty) return pagina.origin; // el servidor sirve el juego
+      final puerto = Uri.parse(definida).port;
       return Uri(scheme: 'http', host: host, port: puerto).toString();
     }
   }
   if (definida.isNotEmpty) return definida;
-  if (kIsWeb) return Uri.base.origin; // la página la sirve el propio servidor
   // En el emulador de Android "localhost" es el propio emulador: tu PC es 10.0.2.2.
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     return 'http://10.0.2.2:3000';
   }
   return 'http://localhost:3000';
 }
-
 
 class Usuario {
   final int id;
@@ -94,7 +91,7 @@ class ServicioAuth extends ChangeNotifier {
   /// Al abrir la app: si hay un token guardado, comprueba que siga sirviendo.
   Future<void> restaurarSesion() async {
     try {
-      _token = await _almacen.read(key: _claveToken);
+      _token = await _leerToken();
       if (_token != null) {
         final datos = await _pedir('GET', '/yo');
         _usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
@@ -150,25 +147,45 @@ class ServicioAuth extends ChangeNotifier {
 
   // ---------- Internos ----------
 
- Future<void> _entrar(Map<String, dynamic> datos) async {
-  _token = datos['token'] as String;
-  _usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
-  cuentaBorrada = false;
-  try {
-    await _almacen.write(key: _claveToken, value: _token);
-  } catch (_) {
-    // En web sin HTTPS no se puede guardar cifrado: la sesión dura hasta cerrar la pestaña.
+  Future<void> _entrar(Map<String, dynamic> datos) async {
+    _token = datos['token'] as String;
+    _usuario = Usuario.desdeJson(datos['usuario'] as Map<String, dynamic>);
+    cuentaBorrada = false;
+    // Se guarda cifrado (Keystore / Keychain / WebCrypto) si se puede.
+    await _guardarToken(_token!);
+    notifyListeners();
   }
-  notifyListeners();
-}
-Future<void> _salir() async {
-  _token = null;
-  _usuario = null;
-  try {
-    await _almacen.delete(key: _claveToken);
-  } catch (_) {}
-  notifyListeners();
-}
+
+  Future<void> _salir() async {
+    _token = null;
+    _usuario = null;
+    await _borrarToken();
+    notifyListeners();
+  }
+
+  // En el navegador, flutter_secure_storage cifra con WebCrypto, que solo
+  // existe en páginas https o localhost. Abriendo el juego por
+  // http://192.168.x.x falla: entonces el token se guarda solo en memoria
+  // (la sesión dura mientras la pestaña siga abierta) en vez de romper el login.
+  Future<String?> _leerToken() async {
+    try {
+      return await _almacen.read(key: _claveToken);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _guardarToken(String token) async {
+    try {
+      await _almacen.write(key: _claveToken, value: token);
+    } catch (_) {}
+  }
+
+  Future<void> _borrarToken() async {
+    try {
+      await _almacen.delete(key: _claveToken);
+    } catch (_) {}
+  }
 
   Future<Map<String, dynamic>> _pedir(
     String metodo,

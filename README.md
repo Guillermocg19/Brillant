@@ -17,7 +17,18 @@ Juego multijugador. Una persona **crea el servidor** y los demás **se conectan*
    Pásale a tus amigos la que **no** diga `localhost`.
 3. Deja esa ventana abierta mientras juegan.
 
-## Si te vas a unir a una partida
+## Si te vas a unir desde el teléfono
+
+1. Conecta el teléfono a la misma red que la PC del servidor
+   (si la red no tiene internet, apaga los datos móviles).
+2. Abre en el navegador la dirección del servidor, por ejemplo `http://192.168.137.1:3000`.
+3. Crea tu cuenta y juega. No hay que instalar nada.
+
+La PC del servidor necesita Flutter para compilar el juego web la primera vez
+(`iniciar-servidor.bat` lo hace solo). Si cambias el código del juego, ejecuta
+**`compilar-web.bat`** y recarga la página en el teléfono.
+
+## Si te vas a unir desde una PC
 
 1. Haz doble clic en **`conectar.bat`**.
 2. Escribe la dirección que te pasaron (por ejemplo `192.168.1.45`) y pulsa Enter.
